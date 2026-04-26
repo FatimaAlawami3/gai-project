@@ -8,7 +8,7 @@ from langchain_core.documents import Document
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
 from intent_router import detect_intent, generic_answer, road_topics, suggested_questions
-from prompts import RAG_PROMPT, get_prompt_inputs
+from prompts import ARABIC_RE, RAG_PROMPT, get_prompt_inputs
 from rag_config import Settings, load_google_credentials
 
 
@@ -383,6 +383,14 @@ SOURCE_NOTE_RE = re.compile(
     flags=re.IGNORECASE,
 )
 
+ARABIC_SECTION_LABEL_REPLACEMENTS = [
+    (r"(?mi)^\s*Key Points\s*:\s*$", "النقاط الرئيسية:"),
+    (r"(?mi)^\s*Penalties\s*:\s*$", "العقوبات:"),
+    (r"(?mi)^\s*Legal Responsibility\s*:\s*$", "المسؤولية القانونية:"),
+    (r"(?mi)^\s*Exceptions\s*:\s*$", "الاستثناءات:"),
+    (r"(?mi)^\s*Steps\s*:\s*$", "الخطوات:"),
+]
+
 
 def strip_generated_sources(answer: str) -> str:
     match = SOURCE_SECTION_RE.search(answer)
@@ -397,6 +405,9 @@ def clean_answer_formatting(answer: str) -> str:
     text = re.sub(r"[ \t]+\*\s+(?=(?:\*\*)|[A-Za-z0-9\u0600-\u06FF])", "\n- ", text)
     text = re.sub(r"(?m)^\s*\*\s+", "- ", text)
     text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
+    if ARABIC_RE.search(text):
+        for pattern, replacement in ARABIC_SECTION_LABEL_REPLACEMENTS:
+            text = re.sub(pattern, replacement, text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
@@ -436,8 +447,11 @@ FOLLOWUP_TOPIC_KEYWORDS = {
     "accident": [
         r"\baccident\b",
         r"\bcollision\b",
+        r"\bcrash\b",
         r"حادث",
         r"حوادث",
+        r"تصادم",
+        r"صدم",
     ],
     "pedestrian crossing": [
         r"\bpedestrian\b",
@@ -459,6 +473,22 @@ FOLLOWUP_TOPIC_KEYWORDS = {
         r"رخصة",
         r"بدون رخصة",
         r"غير مرخص",
+    ],
+    "phone use": [
+        r"\bphone\b",
+        r"\bmobile\b",
+        r"\bcell\s*phone\b",
+        r"\bhands[- ]free\b",
+        r"\bdevice\b",
+        r"\bdistract(ed|ion)?\b",
+        r"هاتف",
+        r"جوال",
+        r"الهاتف",
+        r"الجوال",
+        r"بدون يد",
+        r"بدون استخدام اليد",
+        r"تشتيت",
+        r"انشغال",
     ],
 }
 
@@ -535,12 +565,33 @@ FOLLOWUP_ASPECT_KEYWORDS = {
         r"\bif i was wrong\b",
         r"\bif i were wrong\b",
         r"المخطئ",
+        r"المتسبب",
+        r"المتسببة",
+        r"تسببت",
+        r"متسبب",
         r"غلطان",
         r"غلطانة",
         r"غلط",
+        r"أنا السبب",
+        r"انا السبب",
+        r"كنت السبب",
+        r"إذا كنت السبب",
+        r"اذا كنت السبب",
+        r"لو أنا السبب",
+        r"لو انا السبب",
+        r"أنا المتسبب",
+        r"انا المتسبب",
+        r"إذا أنا المتسبب",
+        r"اذا انا المتسبب",
+        r"لو أنا المتسبب",
+        r"لو انا المتسبب",
         r"على خطأ",
         r"الخطأ علي",
         r"الخطأ عليّ",
+        r"الخطأ مني",
+        r"الغلطة مني",
+        r"الحق علي",
+        r"الحق عليّ",
         r"مسؤول",
         r"المسؤولية",
     ],
@@ -669,6 +720,11 @@ TOPIC_SUGGESTIONS = {
             "What is the penalty for changing a vehicle's color without approval?",
             "Does the rule apply to the vehicle owner, the repair shop, or both?",
         ],
+        "phone_use": [
+            "Is using a phone while driving allowed?",
+            "When is a hands-free device required while driving?",
+            "What is the consequence of using a phone while driving?",
+        ],
         "unlicensed_driver": [
             "What is the penalty for allowing an unlicensed person to drive?",
             "Who is legally responsible if an unlicensed driver causes an accident?",
@@ -716,6 +772,11 @@ TOPIC_SUGGESTIONS = {
             "ما عقوبة تغيير لون المركبة بدون موافقة؟",
             "هل تطبق القاعدة على مالك المركبة أم على الورشة أم على الاثنين؟",
         ],
+        "phone_use": [
+            "هل يسمح باستخدام الهاتف أثناء القيادة؟",
+            "متى يشترط استخدام الهاتف عبر نظام بدون استخدام اليد؟",
+            "ما نتيجة استخدام الهاتف أثناء القيادة؟",
+        ],
         "unlicensed_driver": [
             "ما عقوبة السماح لشخص غير مرخص له بقيادة المركبة؟",
             "من المسؤول قانونياً إذا تسبب سائق غير مرخص له في حادث؟",
@@ -761,6 +822,7 @@ CLARIFYING_SUGGESTIONS = {
             "Do you mean whether a roundabout action is allowed?",
             "Do you mean whether parking is allowed in a certain place?",
             "Do you mean whether changing a vehicle's color is allowed?",
+            "Do you mean whether using a phone while driving is allowed?",
         ],
         "clarification": [
             "Do you mean a roundabout rule, an accident procedure, or a parking rule?",
@@ -783,6 +845,7 @@ CLARIFYING_SUGGESTIONS = {
             "هل تقصد ما إذا كان إجراء معين في الدوار مسموحاً؟",
             "هل تقصد ما إذا كان الوقوف مسموحاً في مكان معين؟",
             "هل تقصد ما إذا كان تغيير لون المركبة مسموحاً؟",
+            "هل تقصد ما إذا كان استخدام الهاتف أثناء القيادة مسموحاً؟",
         ],
         "clarification": [
             "هل تقصد قاعدة تخص الدوار أم إجراء بعد الحادث أم قاعدة للوقوف؟",
@@ -810,6 +873,7 @@ def _primary_topic_for_question(
         "roundabout",
         "parking",
         "vehicle_color",
+        "phone_use",
         "unlicensed_driver",
         "speed",
         "road_signs",
@@ -895,6 +959,16 @@ def should_ask_clarification_before_rag(
     normalized = " ".join(question.strip().lower().split())
     current_topics = road_topics(question, language)
     current_roles = _matching_roles(question)
+    is_vehicle_modification_question = (
+        (
+            re.search(r"\b(car|vehicle|automobile)\b", normalized)
+            and re.search(r"\b(modif|alter|change|paint|colo(u)?r|shape)\b", normalized)
+        )
+        or (
+            re.search(r"سيار|مركب", question)
+            and re.search(r"لون|طلاء|صبغ|شكل|تعديل|تغيير", question)
+        )
+    )
     has_specific_context = any(
         re.search(pattern, normalized, flags=re.IGNORECASE)
         for pattern in [
@@ -918,6 +992,9 @@ def should_ask_clarification_before_rag(
 
     if answer_intent == "procedure" and not current_topics and not has_specific_context:
         return True
+
+    if answer_intent == "permission_rule" and is_vehicle_modification_question:
+        return False
 
     if (
         answer_intent == "permission_rule"
@@ -1128,13 +1205,11 @@ def expand_retrieval_query(question: str) -> str:
     normalized = question.lower()
     vehicle_color_terms = (
         re.search(r"\b(car|vehicle|automobile)\b", normalized)
-        and re.search(r"\bcolo(u)?r\b", normalized)
-        and re.search(r"\b(modif|alter|change|paint)", normalized)
+        and re.search(r"\b(modif|alter|change|paint|colo(u)?r|shape)\b", normalized)
     )
     arabic_vehicle_color_terms = (
         re.search(r"سيار|مركب", question)
-        and re.search(r"لون|طلاء|صبغ", question)
-        and re.search(r"تعديل|تغيير", question)
+        and re.search(r"لون|طلاء|صبغ|شكل|تعديل|تغيير", question)
     )
 
     if vehicle_color_terms or arabic_vehicle_color_terms:
@@ -1164,6 +1239,23 @@ def expand_retrieval_query(question: str) -> str:
             "Vehicle owner designated driver possessor allows unlicensed person to drive. "
             "Fine not less than 1,000 riyals and not more than 2,000 riyals. "
             "Traffic accident both persons jointly liable subject to competent court."
+        )
+
+    phone_use_terms = (
+        re.search(r"\b(phone|mobile|cell\s*phone|hands[- ]free|device)\b", normalized)
+        and re.search(r"\b(driv(e|ing)|use|using|while)\b", normalized)
+    ) or re.search(r"\bdistract(ed|ion)?\b", normalized)
+    arabic_phone_use_terms = (
+        re.search(r"هاتف|جوال", question)
+        and re.search(r"قياد|سائق|أثناء", question)
+    ) or re.search(r"بدون يد|بدون استخدام اليد|تشتيت|انشغال", question)
+
+    if phone_use_terms or arabic_phone_use_terms:
+        return (
+            f"{question}\n"
+            "Using mobile phones while driving. Using mobile phones without a hands-free device. "
+            "Driver distraction while driving. Traffic violations points system. "
+            "Driver obligations and safe driving behavior."
         )
 
     return question
@@ -1295,10 +1387,15 @@ SOURCE_TERM_EXPANSIONS = {
     "modifications": {"modification", "altered", "altering", "changing"},
     "modifying": {"modification", "altered", "altering", "changing"},
     "modify": {"modification", "altered", "altering", "changing"},
+    "phone": {"phone", "mobile", "hands-free", "device"},
+    "mobile": {"phone", "mobile", "hands-free", "device"},
+    "hands-free": {"phone", "mobile", "hands-free", "device"},
     "parking": {"parking", "stopping", "waiting"},
     "penalty": {"fine", "penalty", "punished", "violation"},
     "roundabout": {"roundabout", "priority", "track"},
     "speed": {"speed", "distance", "braking"},
+    "الهاتف": {"الهاتف", "جوال", "بدون", "يد"},
+    "جوال": {"الهاتف", "جوال", "بدون", "يد"},
     "لون": {"لون", "تغيير", "تعديل"},
     "تغيير": {"لون", "تغيير", "تعديل"},
     "تعديل": {"لون", "تغيير", "تعديل"},
@@ -1468,12 +1565,10 @@ def filter_focused_docs(
     normalized_query = retrieval_query.lower()
     is_vehicle_color_query = (
         re.search(r"\b(car|vehicle|automobile)\b", normalized_query)
-        and re.search(r"\bcolo(u)?r\b", normalized_query)
-        and re.search(r"\b(modif|alter|change|paint)", normalized_query)
+        and re.search(r"\b(modif|alter|change|paint|colo(u)?r|shape)\b", normalized_query)
     ) or (
         re.search(r"سيار|مركب", retrieval_query)
-        and re.search(r"لون|طلاء|صبغ", retrieval_query)
-        and re.search(r"تعديل|تغيير", retrieval_query)
+        and re.search(r"لون|طلاء|صبغ|شكل|تعديل|تغيير", retrieval_query)
     )
 
     if not is_vehicle_color_query:
@@ -1491,22 +1586,46 @@ def filter_focused_docs(
                 and re.search(r"قيادة|يقود|يسوق|شخص|صديق|سيار|مركب", retrieval_query)
             )
         )
+        if is_unlicensed_driver_query:
+            focused = []
+            for doc, score in docs_with_scores:
+                text = _doc_combined_text(doc)
+                official_reference = str(doc.metadata.get("official_reference") or "").lower()
+                is_direct_article = official_reference == "article 77"
+                has_unlicensed_rule = (
+                    "not holding" in text
+                    and "driving" in text
+                    and "license" in text
+                    and "fine" in text
+                )
+                if is_direct_article or has_unlicensed_rule:
+                    focused.append((doc, score))
 
-        if not is_unlicensed_driver_query:
+            return focused or docs_with_scores
+
+        is_phone_use_query = (
+            re.search(r"\b(phone|mobile|cell\s*phone|hands[- ]free|device)\b", normalized_query)
+            and re.search(r"\b(driv(e|ing)|use|using|while)\b", normalized_query)
+        ) or re.search(r"\bdistract(ed|ion)?\b", normalized_query) or (
+            re.search(r"هاتف|جوال", retrieval_query)
+            and re.search(r"قياد|سائق|أثناء", retrieval_query)
+        ) or re.search(r"بدون يد|بدون استخدام اليد|تشتيت|انشغال", retrieval_query)
+
+        if not is_phone_use_query:
             return docs_with_scores
 
         focused = []
         for doc, score in docs_with_scores:
-            text = _doc_combined_text(doc)
-            official_reference = str(doc.metadata.get("official_reference") or "").lower()
-            is_direct_article = official_reference == "article 77"
-            has_unlicensed_rule = (
-                "not holding" in text
+            text = _doc_combined_text(doc).lower()
+            has_phone_rule = (
+                (("mobile phone" in text) or ("phone" in text))
                 and "driving" in text
-                and "license" in text
-                and "fine" in text
+            ) or "hands-free" in text or "distract" in text
+            has_violation_points = (
+                ("mobile phone" in text or "hands-free" in text)
+                and "points" in text
             )
-            if is_direct_article or has_unlicensed_rule:
+            if has_phone_rule or has_violation_points:
                 focused.append((doc, score))
 
         return focused or docs_with_scores

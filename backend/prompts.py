@@ -32,43 +32,21 @@ SOURCES_HEADINGS = {
 }
 
 
-ANSWER_STYLES = {
-    "definition": (
-        "Definition mode: give the definition first, then add one short explanation. "
-        "Do not add penalties unless the user asks for them."
-    ),
-    "permission_rule": (
-        "Legal rule mode: answer yes/no or allowed/not allowed first. "
-        "Then format the answer with a short section titled Key Points: followed by concise bullet points. "
-        "State the rule, who it applies to, and any required permission or condition."
-    ),
-    "penalty_consequence": (
-        "Penalty mode: start with one short direct answer. "
-        "Then add a section titled Key Points: with concise bullet points. "
-        "Group related details into short sections such as Penalties:, Legal Responsibility:, or Exceptions: when relevant. "
-        "State the triggering violation or action, who is responsible, then the penalty or consequence. "
-        "If no penalty appears in context, say so."
-    ),
-    "procedure": (
-        "Procedure mode: answer as clear step-by-step instructions. "
-        "Use this structure when supported by context: one short direct answer, then a section titled Key Points: or Steps:, "
-        "then short bullet points on separate lines. Use bullet points, not numbers. "
-        "Keep each step practical."
-    ),
-    "comparison": (
-        "Comparison mode: give a short side-by-side comparison and end with the practical takeaway."
-    ),
-    "followup": (
-        "Follow-up mode: briefly remind the user of the previous topic, then answer the current "
-        "follow-up directly without repeating the whole previous answer."
-    ),
-    "clarification": (
-        "Clarification mode: if the question is broad or ambiguous, begin with one short clarifying "
-        "question, then provide the safest general answer that is directly supported by context."
-    ),
-    "general_road_safety": (
-        "General road-safety mode: answer directly and concisely using only the retrieved context."
-    ),
+SECTION_LABELS = {
+    "ar": {
+        "key_points": "النقاط الرئيسية",
+        "penalties": "العقوبات",
+        "legal_responsibility": "المسؤولية القانونية",
+        "exceptions": "الاستثناءات",
+        "steps": "الخطوات",
+    },
+    "en": {
+        "key_points": "Key Points",
+        "penalties": "Penalties",
+        "legal_responsibility": "Legal Responsibility",
+        "exceptions": "Exceptions",
+        "steps": "Steps",
+    },
 }
 
 
@@ -82,6 +60,49 @@ SOURCE_PREFERENCES = {
     "clarification": "Use only sources that directly support the broad topic and avoid over-specific claims.",
     "general_road_safety": "Use the most directly relevant retrieved context.",
 }
+
+
+def localized_answer_style(answer_intent: str, language_code: str) -> str:
+    labels = SECTION_LABELS[language_code]
+    styles = {
+        "definition": (
+            "Definition mode: give the definition first, then add one short explanation. "
+            "Do not add penalties unless the user asks for them."
+        ),
+        "permission_rule": (
+            "Legal rule mode: answer yes/no or allowed/not allowed first. "
+            f"Then format the answer with a short section titled {labels['key_points']}: followed by concise bullet points. "
+            "State the rule, who it applies to, and any required permission or condition."
+        ),
+        "penalty_consequence": (
+            "Penalty mode: start with one short direct answer. "
+            f"Then add a section titled {labels['key_points']}: with concise bullet points. "
+            f"Group related details into short sections such as {labels['penalties']}:, {labels['legal_responsibility']}:, or {labels['exceptions']}: when relevant. "
+            "State the triggering violation or action, who is responsible, then the penalty or consequence. "
+            "If no penalty appears in context, say so."
+        ),
+        "procedure": (
+            "Procedure mode: answer as clear step-by-step instructions. "
+            f"Use this structure when supported by context: one short direct answer, then a section titled {labels['key_points']}: or {labels['steps']}:, "
+            "then short bullet points on separate lines. Use bullet points, not numbers. "
+            "Keep each step practical."
+        ),
+        "comparison": (
+            "Comparison mode: give a short side-by-side comparison and end with the practical takeaway."
+        ),
+        "followup": (
+            "Follow-up mode: briefly remind the user of the previous topic, then answer the current "
+            "follow-up directly without repeating the whole previous answer."
+        ),
+        "clarification": (
+            "Clarification mode: if the question is broad or ambiguous, begin with one short clarifying "
+            "question, then provide the safest general answer that is directly supported by context."
+        ),
+        "general_road_safety": (
+            "General road-safety mode: answer directly and concisely using only the retrieved context."
+        ),
+    }
+    return styles.get(answer_intent, styles["general_road_safety"])
 
 
 SYSTEM_PROMPT = """You are DALIL, a Road Safety Guide AI Chatbot for Saudi Arabia.
@@ -122,10 +143,10 @@ Answer structure:
 - Start with one short direct answer sentence.
 - Do not return long paragraphs.
 - Break the answer into short sections and bullet points.
-- Use a section titled Key Points: when explaining rules, consequences, or multiple related details.
+- Use a section titled {key_points_label}: when explaining rules, consequences, or multiple related details.
 - Put each bullet point on its own line.
 - Keep each bullet concise and limited to one idea when possible.
-- Group related ideas into short sections when relevant, such as Penalties:, Legal Responsibility:, Exceptions:, or Steps:.
+- Group related ideas into short sections when relevant, such as {penalties_label}:, {legal_responsibility_label}:, {exceptions_label}:, or {steps_label}:.
 - Use simple spacing between sections for readability.
 - Do not use markdown bold or markdown heading syntax.
 - Do not include a "{sources_heading}" section in the answer text.
@@ -174,18 +195,22 @@ def get_prompt_inputs(
     answer_intent: str = "general_road_safety",
 ) -> dict[str, str]:
     language_code = detect_language(question)
+    labels = SECTION_LABELS[language_code]
     return {
         "question": question,
         "context": context,
         "chat_history": chat_history or "No recent conversation.",
-        "answer_style": ANSWER_STYLES.get(
-            answer_intent, ANSWER_STYLES["general_road_safety"]
-        ),
+        "answer_style": localized_answer_style(answer_intent, language_code),
         "source_preference": SOURCE_PREFERENCES.get(
             answer_intent, SOURCE_PREFERENCES["general_road_safety"]
         ),
         "answer_language": LANGUAGE_NAMES[language_code],
         "fallback_message": FALLBACK_MESSAGES[language_code],
         "sources_heading": SOURCES_HEADINGS[language_code],
+        "key_points_label": labels["key_points"],
+        "penalties_label": labels["penalties"],
+        "legal_responsibility_label": labels["legal_responsibility"],
+        "exceptions_label": labels["exceptions"],
+        "steps_label": labels["steps"],
         "language": language_code,
     }

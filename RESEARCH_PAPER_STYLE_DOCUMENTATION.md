@@ -4,7 +4,7 @@
 
 Generative Artificial Intelligence has transformed the design of interactive information systems by enabling natural language understanding, contextual reasoning, and fluent response generation over large knowledge spaces. In particular, large language models (LLMs) have made it possible to build conversational agents capable of synthesizing domain-specific knowledge into accessible responses. However, general-purpose LLMs are not intrinsically reliable for regulated or safety-sensitive domains because they may produce ungrounded or hallucinated content when asked about legal rules, procedural obligations, or operational constraints. This limitation is especially critical in road safety contexts, where inaccurate advice may mislead drivers about legal duties, accident procedures, licensing obligations, or penalty consequences.
 
-To address this problem, the DALIL project was designed as an AI-powered road safety chatbot for Saudi Arabia using a Retrieval-Augmented Generation (RAG) architecture. Rather than relying on unconstrained parametric generation, the system grounds its responses in a curated corpus of Saudi traffic and driving references, then uses an LLM only after retrieving relevant evidence. The resulting system acts as a domain-specific conversational assistant capable of answering questions about Saudi Traffic Law, the Moroor theoretical driving handbook, road behavior, roundabouts, traffic accidents, parking, and related safety procedures.
+To address this problem, the DALIL project was designed as an AI-powered road safety chatbot for Saudi Arabia using a Retrieval-Augmented Generation (RAG) architecture. Rather than relying on unconstrained parametric generation, the system grounds its responses in a curated corpus of Saudi traffic and driving references, then uses an LLM only after retrieving relevant evidence. The resulting system acts as a domain-specific conversational assistant capable of answering questions about Saudi Traffic Law, the Moroor theoretical driving handbook, road behavior, roundabouts, traffic accidents, parking, phone use while driving, and related safety procedures.
 
 The motivation for the project emerged from the practical difficulty of accessing and interpreting formal road-safety information. Saudi traffic law documents, driver handbooks, and standards contain valuable but structurally heterogeneous information. For many end users, especially those seeking quick clarification during learning or compliance scenarios, directly navigating these documents is inefficient. DALIL was therefore conceived as a bilingual conversational interface that translates authoritative road-safety material into accessible, grounded, and context-aware answers in both English and Arabic.
 
@@ -24,6 +24,7 @@ The implemented goals of the project were:
 - to support multi-turn conversational interaction without treating previous chat turns as factual evidence;
 - to prevent hallucinated penalties, article numbers, or legal duties;
 - to provide readable, structured answers with separately rendered citations;
+- to support a controlled embedding-model comparison required for baseline evaluation;
 - and to support bilingual operation through Arabic/English language detection and interface adaptation.
 
 From an engineering perspective, DALIL is a hybrid deterministic-generative system. Static project facts and application capabilities are handled through explicit router logic, while domain questions are answered through retrieval and grounded generation. This separation gives the final system a more reliable operational profile than a purely generative chatbot.
@@ -67,12 +68,14 @@ The architecture is divided into the following major subsystems:
   - defines grounding rules, answer styles, fallback policy, and language enforcement
 - **Configuration Layer**
   - `backend/rag_config.py`
-  - resolves environment variables, credentials, model settings, and file paths
+  - resolves environment variables, credentials, model settings, file paths, and experiment-specific settings files
 - **Offline Knowledge Preparation Layer**
   - `scripts/GAI_Jason_Convertor.py`
   - converts PDFs into structured JSON chunks with metadata
   - `backend/build_vector_store.py`
   - generates the FAISS vector index from the knowledge base
+
+After the comparison extension, the architecture also supports profile-based retrieval selection. The backend can load separate embedding configurations through dedicated settings files, and the frontend can switch between them at runtime. This transformed DALIL from a single-configuration RAG chatbot into a controlled comparative evaluation environment while still preserving one final production-style configuration.
 
 Architecturally, DALIL is not a monolithic "chat with an LLM" application. It is a layered inference stack with deterministic routing before generation and post-generation sanitation after inference. This layered organization is one of the most important characteristics of the final implementation.
 
@@ -209,12 +212,16 @@ This category layer turns the JSON corpus into a semantically structured retriev
 
 ### C. Embedding & Vector Database
 
-#### 1. Embedding Model
+#### 1. Embedding Models
 
-The project uses Google Gemini embeddings:
+The project uses Google Vertex AI embeddings in two controlled configurations:
 
-- embedding model: `gemini-embedding-001`
-- embedding dimensionality: `3072`
+- `gemini-embedding-001`
+  - `3072` dimensions
+  - retained as the final selected embedding configuration
+- `text-multilingual-embedding-002`
+  - `768` dimensions
+  - introduced as the baseline comparison model
 
 These settings are defined in `backend/rag_config.py` and instantiated in `backend/rag_chain.py` through `GoogleGenerativeAIEmbeddings`.
 
@@ -234,17 +241,23 @@ Operationally, the embedding flow is:
 1. load structured JSON chunks;
 2. transform each chunk into a LangChain `Document`;
 3. preserve retrieval-relevant metadata alongside the text;
-4. generate a 3072-dimensional dense embedding for each document;
+4. generate a dense embedding for each document according to the active profile;
 5. store the resulting vectors in a FAISS index.
 
 #### 3. Storage and Indexing
 
-The vector database is local FAISS, generated via `backend/build_vector_store.py` and stored under:
+The vector database is local FAISS, generated via `backend/build_vector_store.py`. After the comparison extension, vector stores are maintained separately per embedding profile:
 
-- `data/vector_store/index.faiss`
-- `data/vector_store/index.pkl`
+- `data/vector_store/`
+  - original project index
+- `data/vector_store_gemini_embedding_001/`
+  - isolated Gemini comparison index
+- `data/vector_store_text_multilingual_embedding_002/`
+  - isolated multilingual comparison index
 
 The system uses `FAISS.from_documents(...)` during build time and `FAISS.load_local(...)` during runtime. The vector store is loaded once and cached inside the `RoadSafetyRAG` instance. On backend startup, the system warms both the vector store and the LLM client to reduce cold-start latency.
+
+This separation was a deliberate experimental-control decision. It allowed the team to compare embedding models fairly without overwriting the original Gemini index already used by the main system.
 
 #### 4. Similarity Search and Top-k Retrieval
 
@@ -297,7 +310,7 @@ The raw user query is often not used directly. Before retrieval, the system may 
 
 Implemented special expansions include:
 
-- vehicle color modification;
+- vehicle modification, repainting, and color change;
 - allowing an unlicensed person to drive.
 
 These expansions were introduced because direct semantic search over the original wording was sometimes insufficient to retrieve the most legally relevant chunks.
@@ -467,8 +480,9 @@ Implemented follow-up topics include:
 - roundabout
 - parking
 - accident
+- phone use
 - unlicensed driver
-- vehicle color
+- vehicle modification / color
 
 Implemented aspects include:
 
@@ -494,9 +508,11 @@ Additionally, vague follow-ups such as:
 
 - `What happens if I do that?`
 - `What about that?`
-- `ولو كنت غلطان؟`
+- informal Arabic accident-responsibility follow-ups expressed in short or colloquial form
 
 are transformed using the last relevant user topic.
+
+For direct legal-rule questions, the retrieval layer also applies topic-aware query expansion in selected domains. During development, this was extended to a dedicated phone-use topic after an English phone-while-driving question briefly produced a fallback despite the presence of the relevant handbook evidence in the indexed corpus.
 
 #### 6. Improvements Made During Development
 
@@ -504,12 +520,16 @@ Follow-up handling required substantial refinement. The major improvements we ma
 
 - preventing vague accident-related penalty questions from falling back too early;
 - making ambiguous questions ask for clarification instead of saying there is no answer;
-- expanding Arabic follow-up detection with short colloquial forms such as `لو` and `ولو`;
-- adding Arabic fault/liability terms like `غلطان`, `غلطانة`, and `غلط`;
+- expanding Arabic follow-up detection from narrow phrase matching into broader informal cue handling;
+- widening the rule-based Arabic coverage for accident blame, responsibility, and liability cues so more informal variants can still be tied to the active accident context;
 - prioritizing recent **user** topics instead of assistant messages during topic extraction;
-- fixing cases where follow-ups were incorrectly pulled toward the wrong previous topic.
+- fixing cases where follow-ups were incorrectly pulled toward the wrong previous topic;
+- introducing a dedicated `phone_use` topic plus retrieval expansion and focused filtering for English and Arabic mobile-phone-driving questions so grounded evidence is surfaced more reliably;
+- broadening the vehicle-modification topic so `Is modifying a car allowed?` is treated as a direct legal-rule query rather than an underspecified clarification case;
+- localizing answer section headings so Arabic responses use Arabic labels rather than English section titles.
 
 These improvements materially increased multi-turn coherence and reduced misrouting.
+They should be understood as broader rule-based coverage rather than exhaustive support for every possible informal Arabic wording.
 
 ### G. Backend & Implementation
 
@@ -543,6 +563,7 @@ Requests contain:
 - `question`
 - optional `top_k`
 - `chat_history`
+- `embedding_profile`
 
 Responses contain not only the answer but also rich control metadata:
 
@@ -560,6 +581,7 @@ Responses contain not only the answer but also rich control metadata:
 - `followup_aspect`
 - `used_rag`
 - `suggested_questions`
+- `embedding_profile`
 - model descriptors
 
 This response schema significantly improved observability and debugging fidelity.
@@ -598,6 +620,8 @@ This allows the interface to know, before completion, whether the response is:
 - a clarification,
 - or a fallback.
 
+It also allows the interface to display which embedding profile produced the current answer, which became important after the embedding-comparison extension was added.
+
 #### 5. Actual Folder Structure and Component Roles
 
 The root project structure is:
@@ -608,6 +632,8 @@ The root project structure is:
   - prompt configuration
   - RAG orchestration
   - environment-driven settings
+- `comparison_versions/`
+  - isolated embedding-comparison configurations and evaluation material
 - `frontend/`
   - React/Vite user interface
   - streaming consumer
@@ -647,11 +673,18 @@ Within the backend:
 - `backend/prompts.py`
   - prompt design and output policies
 - `backend/rag_config.py`
-  - configuration and credentials
+  - configuration, credentials, and experiment-specific env-file loading
 - `backend/build_vector_store.py`
   - offline vector-store builder
 - `backend/requirements.txt`
   - dependency specification
+
+The comparison layer is organized under `comparison_versions/` and contains:
+
+- per-model `settings.env` files
+- per-model helper scripts for index building and API startup
+- a question sheet for manual scoring
+- report-ready comparison text
 
 ### H. Meta Capabilities
 
@@ -702,12 +735,31 @@ Because DALIL is an applied RAG system rather than a train-from-scratch generati
 
 ### 1. Testing Strategy
 
+To satisfy the course requirement for baseline comparison while preserving the integrity of the original DALIL implementation, we conducted an embedding-level comparative experiment between two retrieval configurations:
+
+- `gemini-embedding-001` with `3072`-dimensional embeddings
+- `text-multilingual-embedding-002` with `768`-dimensional embeddings
+
+The comparison was intentionally designed as a controlled ablation in which the embedding model was the only changed variable. All other system components were kept constant, including:
+
+- the same PDF corpus
+- the same JSON knowledge base
+- the same chunking strategy
+- the same metadata schema
+- the same LangChain orchestration layer
+- the same prompt templates and grounding policy
+- the same LLM (`gemini-3.1-pro-preview`)
+- the same retrieval parameterization (`top_k = 3` during the comparison run)
+
+To avoid contaminating the original DALIL setup, the two embedding configurations were isolated into separate experiment folders under `comparison_versions/`, with independent settings files and separate FAISS indices. The multilingual baseline was built by re-embedding all `619` chunks from the shared knowledge base using `text-multilingual-embedding-002`, while the Gemini branch reused the existing Gemini-indexed corpus, copied into its own isolated comparison directory.
+
 The project relied on iterative testing during development, including:
 
 - backend syntax checks;
 - frontend production builds through `npm run build`;
 - targeted backend smoke tests;
 - manual API validation via `/ask` and `/ask/stream`;
+- side-by-side embedding comparison runs;
 - end-to-end conversational verification through the frontend interface.
 
 This testing strategy was chosen because the main risks were not training collapse or gradient instability, but:
@@ -716,7 +768,8 @@ This testing strategy was chosen because the main risks were not training collap
 - query-routing mistakes;
 - ambiguous follow-up failures;
 - bilingual UI inconsistency;
-- incorrect answer formatting.
+- incorrect answer formatting;
+- and profile-isolation errors between competing embedding configurations.
 
 ### 2. Example Query Set
 
@@ -728,9 +781,15 @@ Representative evaluation queries included:
 - "What is the related penalty?"
 - "Can I let my friend drive my car without a license?"
 - "What happens if I do that?"
+- "Is it allowed to use a phone while driving?"
 - "Is modifying a car allowed?"
+- "وش العقوبة؟"
+- "What is the weather today?"
+- "Who are you?"
 - "Who is behind this project?"
-- "ولو كنت غلطان؟"
+- Arabic accident-responsibility follow-ups written in informal or abbreviated form
+- "هل يسمح باستخدام الهاتف أثناء القيادة؟"
+- "ماذا يجب علي فعله بعد وقوع حادث مروري؟"
 
 These test cases targeted specific subsystems:
 
@@ -749,9 +808,11 @@ The system was explicitly tested against:
 - ambiguous penalty questions lacking a concrete violation;
 - broad procedural questions without scenario anchoring;
 - Arabic conversational shorthand;
+- informal Arabic accident-responsibility phrasing;
 - answer formatting drift into long paragraphs;
 - suggested-question mismatch with user language;
-- suggestion drift unrelated to the user’s topic.
+- suggestion drift unrelated to the user’s topic;
+- configuration leakage between embedding profiles in the same Python process.
 
 ### 4. Evaluation Method
 
@@ -776,6 +837,8 @@ The backend’s structured response metadata played a central role in evaluation
 
 allowed the system to be assessed not only by answer surface form but by its internal decision path.
 
+During the embedding comparison work, this observability layer was especially useful for confirming that the backend was not only returning the right answer style, but was also using the intended embedding profile and vector-store path.
+
 ## IV. Results and Analysis
 
 ### 1. System Performance
@@ -790,6 +853,8 @@ The final DALIL system achieved a strong level of functional reliability for the
 - streaming response generation.
 
 The use of vector retrieval plus multi-stage filtering improved answer precision compared with direct free-form generation. The system also became substantially more robust after follow-up-specific query rewrites were introduced.
+
+After the comparison extension, both embedding configurations were shown to be operational on the same evaluation set. Neither embedding profile collapsed into fallback behavior on the tested prompt set, and both preserved the improved follow-up behavior previously added to the system.
 
 ### 2. Accuracy and Reliability
 
@@ -808,6 +873,8 @@ This architecture improved performance in scenarios where a naive chatbot might 
 - roundabout follow-ups;
 - mixed-language conversational use.
 
+The side-by-side evaluation also produced a meaningful ranking between the two embedding models. `gemini-embedding-001` consistently produced more complete answers on safety-critical procedural and Arabic-language questions, while `text-multilingual-embedding-002` remained competitive but more concise.
+
 ### 3. Strengths
 
 The principal strengths of the implemented system are:
@@ -815,6 +882,7 @@ The principal strengths of the implemented system are:
 - strong source governance;
 - rich metadata design;
 - hybrid deterministic-plus-generative architecture;
+- isolated embedding-comparison infrastructure inside the same codebase;
 - multi-stage retrieval rather than single-pass nearest-neighbor use;
 - explicit follow-up handling;
 - bilingual interface and bilingual answer behavior;
@@ -841,6 +909,12 @@ Despite its strengths, the project has real limitations:
 
 In addition, the vector-search pipeline uses FAISS distance-based retrieval through LangChain without a custom similarity calibration layer, which means retrieval behavior is effective but not deeply analytically tuned.
 
+From the direct embedding comparison, the following pattern emerged:
+
+- `gemini-embedding-001` returned broader accident-procedure answers and stronger Arabic detail retention
+- `text-multilingual-embedding-002` remained correct on roundabout and unlicensed-driver scenarios, but several answers were shorter and less complete
+- both models preserved follow-up continuity, suggesting that the routing and query-rewriting layers contributed strongly to multi-turn robustness independent of embedding choice
+
 ## V. Discussion
 
 The DALIL project demonstrates that a domain-specific conversational assistant can be made meaningfully more reliable by combining structured preprocessing, retrieval grounding, deterministic routing, and careful interface control. A major lesson from building the system was that generation quality alone is not enough. The most difficult problems arose not from language fluency but from control:
@@ -855,8 +929,8 @@ The DALIL project demonstrates that a domain-specific conversational assistant c
 Follow-up behavior was one of the most challenging aspects of the project. Early versions sometimes failed in cases such as:
 
 - accident follow-up questions with vague wording;
-- Arabic short follow-ups;
-- questions referring to fault or liability using colloquial language;
+- informal Arabic follow-ups;
+- questions referring to fault, blame, or liability using informal language;
 - cases where the previous assistant answer accidentally influenced topic extraction more than the previous user question.
 
 These issues were gradually resolved through:
@@ -869,6 +943,10 @@ These issues were gradually resolved through:
 ### 2. Routing Mistakes
 
 Another source of complexity was routing error. If a question that should have been treated as a follow-up was sent through a generic path, response quality dropped sharply. Similarly, if a meta question was sent through retrieval, the answer could become noisy or needlessly expensive.
+
+A related retrieval error also appeared in the phone-use domain: the knowledge base already contained the necessary evidence, but the system did not initially model phone use while driving as a dedicated retrieval topic. As a result, at least one valid English question about phone use while driving fell through to fallback behavior before the router and retrieval expansion were refined.
+
+Another query-modeling gap appeared in the vehicle-modification domain. Although the corpus already contained the relevant legal articles, the earlier topic detector was too narrow and could treat `Is modifying a car allowed?` as needing clarification. This was later corrected by widening the topic patterns and clarification bypass rules for vehicle-modification questions.
 
 The intent router became increasingly important as the system matured. It was not just a convenience layer; it became the backbone of reliable system behavior.
 
@@ -894,7 +972,8 @@ Significant insights also emerged from frontend behavior:
 
 - answer readability improved substantially when long paragraphs were replaced with direct answers and bullet sections;
 - suggested questions needed to be fixed and controlled rather than dynamically drifting;
-- language switching required synchronization not just in labels, but also in suggestions and branding elements.
+- language switching required synchronization not just in labels, but also in suggestions and branding elements;
+- embedding comparison became far easier once the frontend exposed a model switch instead of requiring separate frontend instances.
 
 These findings show that a strong RAG system depends as much on presentation-layer discipline as on retrieval quality.
 
@@ -905,11 +984,13 @@ DALIL represents a complete end-to-end AI-powered road safety assistant built ar
 The principal contributions of the implemented system are:
 
 - construction of a structured Saudi road-safety knowledge base from heterogeneous PDFs;
-- semantic indexing of that corpus with Gemini embeddings and FAISS;
+- semantic indexing of that corpus with Vertex AI embeddings and FAISS;
 - development of an intent-aware FastAPI RAG backend;
 - implementation of multi-turn follow-up interpretation with topic/aspect rewriting;
 - integration of static meta capabilities for project-level questions;
-- creation of a bilingual React chat frontend with streaming responses and structured answer rendering.
+- creation of a bilingual React chat frontend with streaming responses, structured answer rendering, and live embedding-profile switching for evaluation.
+
+The comparative experiment retained `gemini-embedding-001` as the final preferred embedding model because it produced more complete accident-related and Arabic answers while preserving the same follow-up improvements demonstrated by the multilingual baseline.
 
 From a practical standpoint, the project demonstrates that domain-constrained generative AI systems can be significantly strengthened when retrieval, routing, prompting, and UI logic are engineered as a coordinated whole rather than as isolated components.
 

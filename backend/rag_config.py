@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Literal
 
@@ -9,7 +10,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BACKEND_DIR.parent if BACKEND_DIR.name == "backend" else BACKEND_DIR
-ENV_FILE = BACKEND_DIR / ".env" if (BACKEND_DIR / ".env").exists() else PROJECT_DIR / ".env"
+
+
+def resolve_env_file(env_file: str | Path | None = None) -> Path:
+    custom_env = env_file or os.getenv("RAG_ENV_FILE")
+    if custom_env:
+        custom_path = Path(custom_env).expanduser()
+        if not custom_path.is_absolute():
+            custom_path = (PROJECT_DIR / custom_path).resolve()
+        return custom_path
+    return BACKEND_DIR / ".env" if (BACKEND_DIR / ".env").exists() else PROJECT_DIR / ".env"
+
+
+ENV_FILE = resolve_env_file()
 
 
 def resolve_project_path(path: Path | None) -> Path | None:
@@ -78,8 +91,16 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
-    load_dotenv(ENV_FILE)
-    settings = Settings()
+    return get_settings_for_env_file()
+
+
+def get_settings_for_env_file(env_file: str | Path | None = None) -> Settings:
+    resolved_env_file = resolve_env_file(env_file)
+    load_dotenv(resolved_env_file, override=True)
+    settings = Settings(
+        _env_file=resolved_env_file,
+        _env_file_encoding="utf-8",
+    )
     settings.google_application_credentials = resolve_project_path(
         settings.google_application_credentials
     )

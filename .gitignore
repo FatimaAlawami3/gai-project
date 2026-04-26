@@ -1,5 +1,7 @@
 .env
 data/vector_store/
+data/vector_store_gemini_embedding_001/
+data/vector_store_text_multilingual_embedding_002/
 data/credentials/
 logs/
 __pycache__/

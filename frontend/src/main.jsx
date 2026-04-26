@@ -2,8 +2,22 @@ import React, { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
-const API_STREAM_URL = "http://127.0.0.1:8000/ask/stream";
+const API_BASE_URL =
+  import.meta.env.VITE_DALIL_API_BASE_URL || "http://127.0.0.1:8011";
+const API_STREAM_URL = `${API_BASE_URL}/ask/stream`;
 const HISTORY_LIMIT = 6;
+const EMBEDDING_PROFILES = [
+  {
+    id: "gemini-embedding-001",
+    shortLabel: "Gemini",
+    label: "Gemini Embedding 001",
+  },
+  {
+    id: "text-multilingual-embedding-002",
+    shortLabel: "Multilingual",
+    label: "Text Multilingual Embedding 002",
+  },
+];
 
 const starterQuestionsByLanguage = {
   en: [
@@ -42,6 +56,7 @@ const uiCopyByLanguage = {
       "Ask about traffic rules, road signs, parking, accidents, or safe driving.",
     resetLabel: "Reset chat",
     sendLabel: "Send message",
+    embeddingLabel: "Embedding model",
   },
   ar: {
     brandName: "دليل",
@@ -54,6 +69,7 @@ const uiCopyByLanguage = {
       "اسأل عن أنظمة المرور، والإشارات، والوقوف، والحوادث، أو القيادة الآمنة.",
     resetLabel: "إعادة تعيين المحادثة",
     sendLabel: "إرسال الرسالة",
+    embeddingLabel: "نموذج التضمين",
   },
 };
 
@@ -112,6 +128,9 @@ function formatError(error) {
 
 function App() {
   const [preferredUiLanguage, setPreferredUiLanguage] = useState("en");
+  const [preferredEmbeddingProfile, setPreferredEmbeddingProfile] = useState(
+    EMBEDDING_PROFILES[0].id
+  );
   const [messages, setMessages] = useState([
     {
       id: crypto.randomUUID(),
@@ -195,6 +214,7 @@ function App() {
           question,
           top_k: 3,
           chat_history: requestHistory,
+          embedding_profile: preferredEmbeddingProfile,
         }),
       });
 
@@ -226,6 +246,7 @@ function App() {
             model: event.model,
             embeddingModel: event.embedding_model,
             embeddingDimensions: event.embedding_dimensions,
+            embeddingProfile: event.embedding_profile,
             rewrittenQuery: event.rewritten_query,
             followupTopic: event.followup_topic,
             followupAspect: event.followup_aspect,
@@ -257,6 +278,7 @@ function App() {
             model: event.model,
             embeddingModel: event.embedding_model,
             embeddingDimensions: event.embedding_dimensions,
+            embeddingProfile: event.embedding_profile,
             rewrittenQuery: event.rewritten_query,
             followupTopic: event.followup_topic,
             followupAspect: event.followup_aspect,
@@ -290,13 +312,13 @@ function App() {
     } catch (err) {
       const errorMessage = formatError(err);
       setError(errorMessage);
-      updateAssistantMessage(() => ({
-        content:
-          "I could not reach the DALIL API. Please make sure the FastAPI server is running on http://127.0.0.1:8000.",
-        language: "en",
-        isFallback: true,
-        isStreaming: false,
-        excludeFromHistory: true,
+        updateAssistantMessage(() => ({
+          content:
+          `I could not reach the DALIL API. Please make sure the FastAPI server is running on ${API_BASE_URL}.`,
+          language: "en",
+          isFallback: true,
+          isStreaming: false,
+          excludeFromHistory: true,
       }));
     } finally {
       setIsLoading(false);
@@ -365,6 +387,26 @@ function App() {
             </div>
           </div>
           <div className="header-actions">
+            <div className="embedding-toggle">
+              <span className="control-label">{uiCopy.embeddingLabel}</span>
+              <div className="embedding-toggle-buttons" role="group" aria-label={uiCopy.embeddingLabel}>
+                {EMBEDDING_PROFILES.map((profile) => (
+                  <button
+                    key={profile.id}
+                    className={`embedding-button ${
+                      preferredEmbeddingProfile === profile.id ? "active" : ""
+                    }`}
+                    type="button"
+                    onClick={() => setPreferredEmbeddingProfile(profile.id)}
+                    aria-pressed={preferredEmbeddingProfile === profile.id}
+                    disabled={isLoading}
+                    title={profile.label}
+                  >
+                    {profile.shortLabel}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="language-toggle" role="group" aria-label="Language switcher">
               <button
                 className={`language-button ${uiLanguage === "en" ? "active" : ""}`}
@@ -449,6 +491,9 @@ function MessageBubble({ message }) {
   const direction = messageDirection(message.content);
   const hasSources = message.sources?.length > 0;
   const isArabic = message.language === "ar" || direction === "rtl";
+  const embeddingLabel = EMBEDDING_PROFILES.find(
+    (profile) => profile.id === message.embeddingProfile
+  )?.shortLabel;
 
   return (
     <article className={`message-row ${isUser ? "user-row" : "assistant-row"}`}>
@@ -464,6 +509,9 @@ function MessageBubble({ message }) {
         dir={direction}
       >
         <div className="bubble-label">{isUser ? "You" : "DALIL"}</div>
+        {!isUser && embeddingLabel ? (
+          <div className="bubble-meta">{embeddingLabel}</div>
+        ) : null}
         {message.content ? (
           <FormattedText text={message.content} />
         ) : message.isStreaming ? (

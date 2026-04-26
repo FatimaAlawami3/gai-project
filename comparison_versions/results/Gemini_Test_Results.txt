@@ -1,0 +1,297 @@
+Gemini Results
+==============
+
+Q1
+--
+Query:
+"What should I do after a traffic accident?"
+
+Answer:
+After a traffic accident, the required steps depend on whether the accident resulted in injuries or only vehicle damage.
+
+Steps for accidents with injuries:
+
+Call traffic at 911 or 993.
+Call the Red Crescent at 997.
+
+Steps for accidents with damage:
+
+Contact Najm and download the Najm application.
+Take photographs of the accident from all angles.
+Park the vehicle away from crowds, if possible.
+Determine the location of the accident, enter the data, and confirm your phone number.
+Submit a report containing the circumstances, location, type of accident, and types of vehicles involved.
+
+Key Points:
+
+Do not leave the scene without reason, as you will be considered a fugitive from justice and face legal action.
+Only move the vehicle if it obstructs traffic, poses a threat to public safety, or if the accident is simple and both parties agree on how it happened.
+Failure to comply with these laws can result in a fine of up to 2,000 Saudi riyals and/or imprisonment for up to 3 months.
+
+References:
+Theoretical Driving Handbook Trainee-Moroor.pdf, p.29, Unit One - 1
+An accident that results in injuries:
+Theoretical Driving Handbook Trainee-Moroor.pdf, p.34, Unit One - 13
+Gathering at the scene of the accident.
+Theoretical Driving Handbook Trainee-Moroor.pdf, pp.29-31, Unit One - 2
+Accident resulting in damage:
+
+Q2
+--
+Query:
+"What should a driver do when approaching a roundabout?"
+
+Answer:
+When approaching a roundabout, a driver must plan their lane in advance and give way to vehicles already traveling inside the roundabout.
+
+Steps:
+
+Give way to vehicles that are already traveling around the roundabout.
+Give a signal when navigating the roundabout.
+Choose track 1 if you intend to turn right at the first exit.
+Choose track 2, if available, if you intend to drive straight to the second exit.
+Choose track 3, if available, if you intend to turn left at the third exit or make a full rotation at the fourth exit.
+
+References:
+Theoretical Driving Handbook Trainee-Moroor.pdf, pp.115-123, Third uni - 3
+Choosing the correct path to take
+Theoretical Driving Handbook Trainee-Moroor.pdf, pp.130-162, Fourth Unit - 1
+Road junctions
+
+Q3
+--
+Query:
+"What about priority?"
+
+Answer:
+Regarding roundabouts, priority is given to the vehicles already traveling inside it.
+
+Key Points:
+
+A driver approaching an intersection that forms a roundabout must give way to vehicles traveling around the roundabout.
+Vehicles inside the roundabout have priority over vehicles outside it.
+This priority rule applies in the absence of traffic lights or a traffic officer directing traffic.
+
+References:
+Theoretical Driving Handbook Trainee-Moroor.pdf, pp.130-162, Fourth Unit - 1
+Road junctions
+Theoretical Driving Handbook Trainee-Moroor.pdf, p.36, Unit One - 8
+Not giving priority to the vehicles inside the roundabout before the vehicles outside it in the
+
+Q4
+--
+Query:
+"Can I let my friend drive my car without a license?"
+
+Answer:
+No, it is not allowed.
+
+Key Points:
+
+Allowing a person who does not hold a driving license to drive your vehicle is a traffic violation.
+This rule applies to the vehicle's owner, designated driver, or possessor.
+The penalty for this violation is a fine of not less than 1,000 riyals and not more than 2,000 riyals.
+If allowing an unlicensed driver results in a traffic accident, both the owner and the driver shall be jointly liable, subject to the discretion of the competent court.
+
+References:
+Traffic Law.pdf, p.20, Article 77
+Article 77
+
+Q5
+--
+Query:
+"What happens if I do that?"
+
+Answer:
+Regarding allowing an unlicensed person to drive your vehicle, you will face fines and potential legal liability.
+
+Key Points:
+
+You will be subject to a fine of not less than 1,000 riyals and not more than 2,000 riyals.
+If this action results in a traffic accident, both you and the unlicensed driver will be jointly liable, subject to the discretion of the competent court.
+These consequences apply to the vehicle's owner, designated driver, or possessor, and are in addition to any penalties imposed directly on the unlicensed driver.
+
+References:
+Traffic Law.pdf, p.20, Article 77
+Article 77
+
+Q6
+--
+Query:
+"Is it allowed to use a phone while driving?"
+
+Answer:
+No, it is not allowed to use a mobile phone while driving without a hands-free device.
+
+Key Points:
+
+The rule applies to the driver of the vehicle.
+Drivers must avoid distractions and must not drive while distracted by a mobile phone.
+Using a mobile phone is a traffic violation unless a hands-free device is used.
+Committing this violation results in 2 penalty points on the driver's record.
+
+References:
+Theoretical Driving Handbook Trainee-Moroor.pdf, pp.41-45, Unit One - 2
+Speed 140 km-h
+Theoretical Driving Handbook Trainee-Moroor.pdf, pp.90-97, Unit Two - 4
+Driver’s Obligations
+
+Q7
+--
+Query:
+"هل يسمح باستخدام الهاتف أثناء القيادة؟"
+
+Answer:
+غير مسموح باستخدام الهاتف المحمول أثناء القيادة دون استخدام جهاز التحدث الحر.
+
+النقاط الرئيسية:
+
+يمنع السائق من القيادة أثناء تشتت الانتباه بسبب استخدام الهاتف المحمول.
+يعد استخدام الهاتف المحمول دون جهاز التحدث الحر (hands-free) مخالفة مرورية.
+تطبق هذه القاعدة على السائق.
+تسجل نقطتان (2) في سجل السائق عند ارتكاب هذه المخالفة.
+
+References:
+الملف: Theoretical Driving Handbook Trainee-Moroor.pdf، الصفحات: pp.41-45، المرجع: Unit One - 2
+Speed 140 km-h
+الملف: Theoretical Driving Handbook Trainee-Moroor.pdf، الصفحات: pp.90-97، المرجع: Unit Two - 4
+Driver’s Obligations
+
+Q8
+--
+Query:
+"ماذا يجب علي فعله بعد وقوع حادث مروري؟"
+
+Answer:
+عتمد الإجراءات التي يجب اتخاذها بعد وقوع الحادث المروري على نوع الحادث وما إذا كان قد نتج عنه إصابات أو أضرار مادية فقط.
+
+الخطوات:
+
+في حال وجود إصابات:
+
+الاتصال بالمرور على الأرقام (911 أو 993)
+الاتصال بالهلال الأحمر على الرقم (997)
+
+في حال وجود أضرار مادية فقط:
+
+التواصل مع "نجم" وتحميل التطبيق الخاص بهم
+التقاط صور للحادث من جميع الزوايا
+إيقاف المركبة بعيدا عن الازدحام إذا أمكن
+تحديد موقع الحادث وإدخال البيانات وتأكيد رقم الهاتف
+تقديم تقرير فوري يحتوي على بيان بظروف وموقع الحادث ونوعه وأنواع المركبات المتورطة
+
+النقاط الرئيسية:
+
+يمنع مغادرة موقع الحادث بدون سبب حتى لا تعتبر هاربا من العدالة وتتخذ ضدك الإجراءات القانونية
+يسمح بتحريك المركبات المتورطة فقط إذا كانت تعيق حركة المرور أو تشكل تهديدا للسلامة العامة، أو إذا كان الحادث بسيطا وواضحا واتفق الطرفان على كيفية وقوعه
+
+References:
+الملف: Theoretical Driving Handbook Trainee-Moroor.pdf، الصفحات: p.29، المرجع: Unit One - 1
+An accident that results in injuries:
+
+Q9
+--
+Query:
+"ولو كنت غلطان؟"
+
+Answer:
+ترتب على الحادث المروري مسؤولية قانونية إذا كان ناتجا عن الإهمال أو التهور أو مخالفة الأنظمة المرورية.
+
+النقاط الرئيسية:
+
+يتم تحديد نسبة الخطأ في الحادث بناء على مقدار الإهمال أو اللامبالاة أو عدم الالتزام بأنظمة المرور.
+تقيم نسبة الخطأ وتحدد وفقا لمعيار نسبي بالنسب التالية: (100%، 75%، 50%، 25%).
+
+References:
+الملف: Theoretical Driving Handbook Trainee-Moroor.pdf، الصفحات: pp.25-28، المرجع: Unit One - 3
+Traffic Accidents
+
+Q10
+---
+Query:
+"Is modifying a car allowed?"
+
+Answer:
+Modifying a car is not allowed without prior permission.
+
+Key Points:
+
+The rule prohibits altering a vehicle's color, features, standard equipment, capacity, dimensions, weight, or engine power without authorization.
+This applies to vehicle owners, repair shop owners, and workers.
+Prior valid permission must be obtained from the competent authority before making any modifications.
+
+Penalties:
+
+Repair shop owners or workers who make unauthorized adjustments face a fine between 10,000 and 50,000 riyals.
+The repair shop will also be closed for a period not exceeding three months.
+Fines double and closure periods increase for repeat violations, leading to permanent closure for a third offense.
+
+References:
+Traffic Law.pdf, p.16, Article 64
+Article 64
+Traffic Law.pdf, p.10, Article 25
+Article 25
+Theoretical Driving Handbook Trainee-Moroor.pdf, p.38, Unit One - 23
+Make any modification or addition to the vehicle’s body or structure that changes its features or
+
+Q11
+---
+Query:
+"Can the vehicles be moved before the accident is reported?"
+
+Answer:
+Yes, vehicles involved in an accident can be moved, but only under specific circumstances.
+
+Key Points:
+
+Vehicles may be moved if they obstruct traffic or pose a threat to public safety.
+Vehicles may be moved if the accident was simple and clear, and both parties agreed on how it happened.
+You should take photographs of the accident from all angles (such as through the Najm application) before parking the vehicle away from crowds.
+
+References:
+Theoretical Driving Handbook Trainee-Moroor.pdf, p.29, Unit One - 1
+An accident that results in injuries:
+Theoretical Driving Handbook Trainee-Moroor.pdf, p.34, Unit One - 13
+Gathering at the scene of the accident.
+Theoretical Driving Handbook Trainee-Moroor.pdf, pp.29-31, Unit One - 2
+Accident resulting in damage:
+
+Q12
+---
+Query:
+"Who is behind this project?"
+
+Answer:
+DALIL was developed by senior AI students at IAU:
+
+Haya Saad Aldossary - 2220004842
+Raneem Saif Alqahtani - 2220005353
+Anfal Salah Bamardouf - 2200003568
+Norah Mohammed Aldossary - 2220006973
+Fatimah Dhiyaa Alawami - 2220005142
+Fai Hadi Alotaibi - 2220002599
+Supervisor: Dr. Mustafa M. Youldash.
+
+Q13
+---
+Query:
+"وش العقوبة؟"
+
+Answer:
+هل يمكنك توضيح المخالفة أو الحالة المقصودة بالضبط؟ العقوبة تختلف حسب الفعل المحدد.
+
+Q14
+---
+Query:
+"What is the weather today?"
+
+Answer:
+I am focused on Saudi road safety and traffic guidance, so I cannot answer general questions here. Please ask about Saudi traffic law, driving rules, road signs, violations, parking, accidents, or safe driving.
+
+Q15
+---
+Query:
+"Who are you?"
+
+Answer:
+I am DALIL, a Road Safety Guide AI Chatbot designed to support road safety awareness and answer drivers' questions about traffic rules and driving guidance in Saudi Arabia. You can ask me about licenses, violations, road signs, roundabouts, parking, accidents, speed, lanes, pedestrians, and safe driving behavior.

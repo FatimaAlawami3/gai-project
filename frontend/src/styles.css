@@ -226,6 +226,48 @@ h2 {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.embedding-toggle {
+  display: grid;
+  gap: 6px;
+}
+
+.control-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.embedding-toggle-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 18px rgba(24, 55, 44, 0.06);
+}
+
+.embedding-button {
+  min-width: 88px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  padding: 0 12px;
+}
+
+.embedding-button.active {
+  background: var(--leaf);
+  color: #ffffff;
 }
 
 .language-toggle {
@@ -340,6 +382,20 @@ h2 {
   font-weight: 800;
   color: var(--leaf);
   margin-bottom: 7px;
+}
+
+.bubble-meta {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-bottom: 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef6f1;
+  border: 1px solid #d6e7de;
+  color: var(--forest);
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
 .user-bubble .bubble-label {
@@ -613,6 +669,21 @@ h2 {
 
   .language-toggle {
     padding: 3px;
+  }
+
+  .embedding-toggle {
+    width: 100%;
+  }
+
+  .embedding-toggle-buttons {
+    width: 100%;
+  }
+
+  .embedding-button {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 0.82rem;
+    padding: 0 8px;
   }
 
   .language-button {

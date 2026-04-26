@@ -2,7 +2,7 @@
 
 ## 1. System Overview
 
-DALIL is an AI-powered road safety chatbot for Saudi Arabia built as a Retrieval-Augmented Generation (RAG) system over a curated road-safety knowledge base. The project is designed to answer user questions about Saudi traffic law, driving procedures, violations, accidents, roundabouts, licensing, parking, and related safety guidance while staying grounded in authoritative source material.
+DALIL is an AI-powered road safety chatbot for Saudi Arabia built as a Retrieval-Augmented Generation (RAG) system over a curated road-safety knowledge base. The project is designed to answer user questions about Saudi traffic law, driving procedures, violations, accidents, roundabouts, licensing, parking, phone use while driving, and related safety guidance while staying grounded in authoritative source material.
 
 This is not a generic chatbot with unconstrained generation. Its architecture deliberately separates:
 
@@ -17,12 +17,13 @@ The implemented system combines:
 
 - a FastAPI backend,
 - a LangChain-based RAG orchestration layer,
-- Gemini embeddings and Gemini generation models,
+- Vertex AI embedding configurations for controlled model comparison,
+- Gemini generation models,
 - a local FAISS vector index,
 - a React/Vite chat frontend,
 - and a curated knowledge base derived from selected Saudi road-safety PDFs.
 
-The system is production-oriented in design even though it is run locally during development. It includes typed API contracts, startup warmup, streaming responses, metadata-rich retrieval, deterministic routing for non-RAG intents, bilingual behavior, structured answer formatting, and iterative fixes for ambiguous queries and multi-turn follow-ups.
+The system is production-oriented in design even though it is run locally during development. It includes typed API contracts, startup warmup, streaming responses, metadata-rich retrieval, deterministic routing for non-RAG intents, bilingual behavior, structured answer formatting, iterative fixes for ambiguous queries and multi-turn follow-ups, and a profile-based embedding comparison setup for experimental evaluation.
 
 ## 2. Objectives and Design Philosophy
 
@@ -198,12 +199,18 @@ Most frequent categories currently include:
 
 ## 4. Embedding Layer and Vector Database
 
-### 4.1 Embedding Model
+### 4.1 Embedding Models
 
-The project uses:
+The final project uses `gemini-embedding-001` as the primary embedding model, and it now includes a controlled comparison baseline using `text-multilingual-embedding-002`.
 
-- embedding model: `gemini-embedding-001`
-- output dimensionality: `3072`
+The two configured embedding profiles are:
+
+- `gemini-embedding-001`
+  - output dimensionality: `3072`
+  - role: final selected production-style configuration
+- `text-multilingual-embedding-002`
+  - output dimensionality: `768`
+  - role: multilingual baseline for experimental comparison
 
 These settings are defined in `backend/rag_config.py` and used in `backend/rag_chain.py`.
 
@@ -229,16 +236,26 @@ The process is:
 
 The system intentionally stores scalarized metadata only. Non-scalar metadata is JSON-serialized through `_scalar_metadata()` so the vector store can safely persist it.
 
-### 4.3 Vector Store
+### 4.3 Vector Stores
 
-The project uses local FAISS:
+The project uses local FAISS, and after the comparison extension it maintains separate vector stores per embedding profile:
 
 - backend builder: `backend/build_vector_store.py`
 - persisted files:
   - `data/vector_store/index.faiss`
   - `data/vector_store/index.pkl`
+  - `data/vector_store_gemini_embedding_001/index.faiss`
+  - `data/vector_store_gemini_embedding_001/index.pkl`
+  - `data/vector_store_text_multilingual_embedding_002/index.faiss`
+  - `data/vector_store_text_multilingual_embedding_002/index.pkl`
 
 Vector store loading is lazy but cached through the `RoadSafetyRAG` instance. On API startup, the backend warms the vector store and the LLM so first-token latency is reduced after server boot.
+
+The experimental setup deliberately isolates vector stores by embedding model so that:
+
+- the original Gemini-based index is preserved,
+- the multilingual baseline can be built without overwriting the original index,
+- and the frontend can switch between embedding profiles without changing the shared knowledge base or prompt logic.
 
 ### 4.4 Similarity Search
 
@@ -272,6 +289,7 @@ The implemented request flow is:
    - `question`
    - `top_k`
    - `chat_history`
+   - `embedding_profile`
 3. FastAPI receives the request in `/ask` or `/ask/stream`
 4. `RoadSafetyRAG._prepare_rag()` runs intent detection
 5. If the query is non-RAG:
@@ -470,8 +488,9 @@ Topic examples include:
 - roundabout
 - parking
 - accident
+- phone use
 - unlicensed driver
-- vehicle color
+- vehicle modification / color
 
 Aspect examples include:
 
@@ -508,9 +527,11 @@ The project implements a second rewriting layer for vague pronoun-based follow-u
 
 - `What happens if I do that?`
 - `What about that?`
-- `ولو كنت غلطان؟`
+- informal Arabic accident-responsibility follow-ups expressed as short, incomplete, or colloquial continuations of the previous turn
 
 If the current user question contains vague referents such as `that`, `it`, `هذا`, or `ذلك`, the system rewrites it with the last user topic so retrieval is anchored properly.
+
+The same retrieval layer also contains topic-aware expansion for certain direct legal-rule questions. A later development fix added a dedicated phone-use topic so English and Arabic questions about mobile-phone use while driving are expanded toward the relevant handbook and traffic-points material instead of depending on one narrow surface phrasing.
 
 ## 8. Clarification Handling
 
@@ -540,7 +561,7 @@ The system expands some high-value query types before retrieval.
 
 Implemented special expansions include:
 
-- vehicle color modification / repainting
+- vehicle modification / repainting / color change
 - allowing an unlicensed person to drive
 
 These expansions inject critical legal phrases and related consequences into the search query to improve retrieval of the correct article or rule.
@@ -589,6 +610,8 @@ Implemented endpoints:
 - embedding model
 - embedding dimensions
 - whether Vertex AI is being used
+- default embedding profile
+- available embedding profiles
 
 ### 10.2 Typed Request/Response Models
 
@@ -614,6 +637,7 @@ The response model includes rich metadata beyond the answer itself:
 - `followup_aspect`
 - `used_rag`
 - `suggested_questions`
+- `embedding_profile`
 - model metadata
 
 This makes the backend observable and easier to debug.
@@ -628,7 +652,7 @@ The event pattern is:
 - `chunk`
 - `done`
 
-This gives the UI immediate state visibility before final answer completion. The metadata event already includes intent and routing fields before all tokens arrive.
+This gives the UI immediate state visibility before final answer completion. The metadata event already includes intent, routing fields, and the active embedding profile before all tokens arrive.
 
 ### 10.4 Backend Components
 
@@ -672,6 +696,7 @@ The frontend handles:
 - answer cleanup,
 - source rendering,
 - starter/suggested question chips,
+- embedding-profile selection,
 - bilingual UI switching,
 - and chat reset behavior.
 
@@ -712,6 +737,15 @@ The frontend now includes a manual language switcher. When the user toggles Arab
 
 When toggled back to English, the fixed suggestion set returns to English immediately.
 
+### 11.6 Embedding Model Toggle
+
+The frontend now also includes a second top-level control for embedding comparison. The user can switch between:
+
+- `gemini-embedding-001`
+- `text-multilingual-embedding-002`
+
+This control sends the selected `embedding_profile` to the backend with each request. The response bubble also displays a short embedding badge so the active retrieval configuration is visible during evaluation. This turned the production UI into a lightweight experiment console without requiring separate frontend builds.
+
 ## 12. Real Folder Structure and Responsibilities
 
 ### 12.1 Root Layout
@@ -720,6 +754,8 @@ The actual project structure is:
 
 - `backend/`
   - API, routing, prompts, RAG logic, config
+- `comparison_versions/`
+  - embedding comparison setup, per-model settings, helper scripts, evaluation material
 - `frontend/`
   - React/Vite chat interface
 - `data/`
@@ -741,10 +777,35 @@ The actual project structure is:
   - generated structured knowledge base
 - `vector_store/`
   - FAISS index files
+- `vector_store_gemini_embedding_001/`
+  - isolated FAISS index for the Gemini embedding experiment
+- `vector_store_text_multilingual_embedding_002/`
+  - isolated FAISS index for the multilingual embedding experiment
 - `credentials/`
   - local Google credential material for Vertex AI mode
 
-### 12.3 Public Assets
+### 12.3 Comparison Folders
+
+`comparison_versions/` was added to support the model-comparison requirement without disturbing the main project configuration.
+
+It contains:
+
+- `comparison_versions/gemini-embedding-001/`
+  - `settings.env`
+  - `build_vector_store.ps1`
+  - `run_api.ps1`
+  - `README.md`
+- `comparison_versions/text-multilingual-embedding-002/`
+  - `settings.env`
+  - `build_vector_store.ps1`
+  - `run_api.ps1`
+  - `README.md`
+- `comparison_versions/embedding_comparison_question_sheet.md`
+  - structured evaluation prompts and scoring template
+- `comparison_versions/embedding_comparison_report_sections.md`
+  - report-ready experiment and results text
+
+### 12.4 Public Assets
 
 `frontend/public/` contains branding assets such as:
 
@@ -784,7 +845,7 @@ Originally, some answers came back as long paragraphs or numbered steps.
 We changed the system so that:
 
 - the prompt asks for a short direct answer first,
-- then `Key Points:`,
+- then a localized heading such as `Key Points:` in English or `النقاط الرئيسية:` in Arabic,
 - then concise bullet points,
 - and procedure answers use bullets rather than numbered lists.
 
@@ -805,18 +866,24 @@ Follow-up handling required multiple rounds of improvement.
 Issues addressed:
 
 - vague English follow-ups not mapping correctly to prior topics
-- Arabic short follow-ups not being recognized
-- accident-fault follow-ups being missed
+- informal Arabic follow-ups not being recognized reliably
+- Arabic accident-responsibility follow-ups being interpreted too narrowly
 - pronoun-based follow-ups like `What happens if I do that?` being misrouted
 - follow-up topic extraction being contaminated by assistant text instead of user topic
 
 Fixes implemented:
 
 - expanded English fault/liability phrases
-- added Arabic colloquial phrases such as `غلطان`, `غلطانة`, and `غلط`
-- expanded Arabic follow-up cue handling to include `لو` and `ولو`
+- expanded Arabic follow-up detection beyond one exact phrase to cover broader informal cues and fault/responsibility wording
+- widened the rule-based Arabic coverage for accident-blame and liability signals so common informal variants are more likely to be linked back to the previous accident topic
 - changed follow-up topic extraction to prioritize recent user messages
 - improved vague follow-up rewriting using the last user topic
+- added a dedicated `phone_use` road topic for English and Arabic phone/mobile-driving questions
+- added phone-use retrieval expansion and focused document filtering so valid phone-use questions no longer fall back when the supporting chunks already exist in the knowledge base
+- broadened the vehicle-modification topic so questions like `Is modifying a car allowed?` are handled as direct legal-rule questions instead of unnecessary clarification cases
+- localized answer section labels so Arabic answers use Arabic headings such as `النقاط الرئيسية:` instead of English labels
+
+These changes broadened Arabic follow-up coverage, but they do not imply exhaustive understanding of every possible informal Arabic phrasing.
 
 ### 14.4 Suggested Question Control
 
@@ -848,6 +915,20 @@ During debugging, one important operational issue appeared:
 
 The reason was that the running server process was not always using reload mode. Restarting the FastAPI server was necessary in some debugging cycles to validate the real behavior of updated follow-up logic.
 
+### 14.7 Embedding Comparison Infrastructure
+
+To satisfy the course requirement for baseline comparison without destabilizing the main system, we extended the architecture with embedding-profile support.
+
+Changes made:
+
+- added `RAG_ENV_FILE` support so the backend can load per-experiment settings files
+- added separate `settings.env` files for Gemini and multilingual experiments
+- created separate vector-store destinations for each embedding model
+- copied the original Gemini index into its own experiment folder
+- built a second FAISS index using `text-multilingual-embedding-002`
+- added a frontend embedding-model switch so both configurations can be tested from the same UI
+- fixed a real bug in config loading by forcing environment overrides, so two profiles can be loaded correctly in the same Python process
+
 ## 15. Evaluation and Testing
 
 ### 15.1 Development Validation Style
@@ -860,6 +941,7 @@ We validated the system through:
 - frontend production builds,
 - targeted API smoke tests,
 - live conversational regression testing,
+- side-by-side embedding comparison runs,
 - and direct inspection of returned routing metadata.
 
 ### 15.2 Query Types Explicitly Tested
@@ -873,9 +955,16 @@ Examples of tested questions during iteration include:
 - Can I let my friend drive my car without a license?
 - What happens if I do that?
 - what if I was the wrong?
-- ولو كنت غلطان؟
+- Is it allowed to use a phone while driving?
+- هل يسمح باستخدام الهاتف أثناء القيادة؟
+- informal Arabic accident-responsibility follow-up variants written in short or colloquial form
 - Is modifying a car allowed?
 - Who is behind this project?
+- وش العقوبة؟
+- What is the weather today?
+- Who are you?
+- هل يسمح باستخدام الهاتف أثناء القيادة؟
+- ماذا يجب علي فعله بعد وقوع حادث مروري؟
 
 ### 15.3 Edge Cases Addressed
 
@@ -887,7 +976,8 @@ The system was specifically hardened against:
 - suggestion chip drift
 - assistant-generated inline source sections
 - follow-ups with pronouns instead of explicit topic names
-- Arabic colloquial follow-up phrasing
+- informal Arabic accident-responsibility phrasing across multiple variants
+- configuration leakage between embedding profiles in the same Python process
 
 ### 15.4 Verification Signals
 
@@ -907,7 +997,32 @@ These fields were used during debugging to confirm whether the system:
 - used RAG or bypassed it,
 - identified a follow-up correctly,
 - requested clarification correctly,
-- and rewrote the query as intended.
+- rewrote the query as intended,
+- and actually used the selected embedding profile.
+
+### 15.5 Embedding Comparison Results
+
+After the comparison infrastructure was added, we ran a controlled side-by-side evaluation between:
+
+- `gemini-embedding-001`
+- `text-multilingual-embedding-002`
+
+Both models were evaluated under identical conditions:
+
+- same PDFs
+- same knowledge-base JSON
+- same prompts
+- same LLM
+- same retrieval parameter (`top_k = 3` during the comparison run)
+
+Observed outcome:
+
+- both embedding configurations answered the evaluation set successfully without falling back
+- both preserved the improved follow-up behavior for English and Arabic multi-turn cases
+- `gemini-embedding-001` produced more complete accident-related and Arabic answers
+- `text-multilingual-embedding-002` remained competitive on roundabout and unlicensed-driver questions, but several answers were shorter and less detailed
+
+This led to the final selection of `gemini-embedding-001` as the preferred production embedding model, with `text-multilingual-embedding-002` retained as the experimental baseline.
 
 ## 16. Current Technical Stack
 
@@ -937,6 +1052,7 @@ DALIL is a bilingual, metadata-aware, intent-routed RAG chatbot tailored to Saud
 Its most important engineering characteristics are:
 
 - authority-aware use of law versus guidance,
+- profile-based embedding comparison with isolated vector stores,
 - prevention of unsupported free-form answers,
 - explicit handling of ambiguity,
 - repair of multi-turn context failures,

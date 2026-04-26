@@ -27,7 +27,6 @@ The prompt enforces:
 - fallback replies for unsupported or out-of-scope questions
 - structured answers with short sections and bullet points
 - Arabic/English answer-language matching
-- localized section headings such as `Key Points:` and `النقاط الرئيسية:`
 
 Intent routing is centralized in `backend/intent_router.py`.
 
@@ -40,10 +39,6 @@ The router handles:
 - follow-up detection before retrieval
 - topic-aware routing for domains such as accident, roundabout, phone use, and
   vehicle modification
-
-Chat history is database-free. The frontend sends recent conversation turns in
-`chat_history`, and the backend uses them only for follow-up understanding, not
-as a factual knowledge source.
 
 ## Models
 

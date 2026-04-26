@@ -90,8 +90,6 @@ GAI_Pdf's/
 ├── comparison_versions/        Embedding comparison configs, reports, results
 ├── scripts/                    PDF-to-JSON conversion script
 ├── logs/                       Local server logs
-├── SYSTEM_DOCUMENTATION.md     System design and implementation documentation
-├── RESEARCH_PAPER_STYLE_DOCUMENTATION.md
 └── README.md
 ```
 
@@ -252,5 +250,4 @@ The embedding-comparison material is stored in:
 
 - Suggested questions are fixed and language-matched to the current UI mode.
 - Arabic answers use Arabic section labels.
-- The current development setup expects the backend on port `8011`, not `8000`.
 - The comparison workflow is designed so the main Gemini setup remains intact.

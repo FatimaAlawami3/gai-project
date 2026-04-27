@@ -20,6 +20,8 @@ Only change:
 - embedding model
 - vector store built from that embedding model
 
+This sheet records the original comparison set and its manual scoring workflow. Later router and retrieval fixes broadened the live system in areas such as driving-license questions, traffic signals, speed/safe-distance wording, pedestrian follow-ups, and some Arabic disambiguation cases, so the sheet should be rerun if you want a current-system scorecard rather than the original comparison snapshot.
+
 ## Scoring Rubric
 
 Use a `1-5` scale for each criterion:

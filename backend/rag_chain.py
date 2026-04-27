@@ -514,6 +514,20 @@ FOLLOWUP_ASPECT_KEYWORDS = {
         r"سرعة",
         r"مسافة",
     ],
+    "risk danger safety": [
+        r"\bdanger\b",
+        r"\bdangerous\b",
+        r"\brisk\b",
+        r"\brisky\b",
+        r"\bunsafe\b",
+        r"\bsafety\b",
+        r"\bhigh[- ]risk\b",
+        r"خطر",
+        r"خطير",
+        r"مخاطر",
+        r"سلامة",
+        r"غير آمن",
+    ],
     "penalty violation fine": [
         r"\bpenalty\b",
         r"\bviolation\b",
@@ -873,6 +887,7 @@ def _primary_topic_for_question(
         "roundabout",
         "parking",
         "vehicle_color",
+        "driving_license",
         "phone_use",
         "unlicensed_driver",
         "speed",
@@ -969,6 +984,18 @@ def should_ask_clarification_before_rag(
             and re.search(r"لون|طلاء|صبغ|شكل|تعديل|تغيير", question)
         )
     )
+    is_allowing_other_driver_question = (
+        (
+            re.search(r"\b(car|vehicle|automobile)\b", normalized)
+            and re.search(r"\b(let|allow|another person|someone else|others?)\b", normalized)
+            and re.search(r"\bdrive\b", normalized)
+        )
+        or (
+            re.search(r"سيار|مركب", question)
+            and re.search(r"السماح|يسمح|دع|شخص آخر|شخص اخر|غيري|غيره", question)
+            and re.search(r"قيادة|يقود|يسوق", question)
+        )
+    )
     has_specific_context = any(
         re.search(pattern, normalized, flags=re.IGNORECASE)
         for pattern in [
@@ -994,6 +1021,9 @@ def should_ask_clarification_before_rag(
         return True
 
     if answer_intent == "permission_rule" and is_vehicle_modification_question:
+        return False
+
+    if answer_intent == "permission_rule" and is_allowing_other_driver_question:
         return False
 
     if (
@@ -1154,6 +1184,14 @@ def rewrite_followup_question(
             "Call Traffic at 911 or 993 and call the Red Crescent at 997. "
             f"Current question: {question}"
         )
+    if topic == "pedestrian crossing" and aspect == "risk danger safety":
+        return (
+            "Pedestrian crossing safety and danger when pedestrians cross outside designated areas. "
+            "Pedestrians move at about 4 to 5 km/h while vehicles move much faster. "
+            "This difference in speed creates high-risk situations for road users. "
+            "Drivers must slow down, be prepared to stop, and must not endanger pedestrians while they are crossing. "
+            f"Current question: {question}"
+        )
     if topic and aspect:
         return f"In the context of {topic}, explain {aspect}. Current question: {question}"
     if topic:
@@ -1201,15 +1239,111 @@ def rewrite_vague_question(
     )
 
 
-def expand_retrieval_query(question: str) -> str:
+TOPIC_RETRIEVAL_HINTS = {
+    "accident": (
+        "Traffic accident procedures. Accidents with injuries and accidents with vehicle damage only. "
+        "Call Traffic at 911 or 993. Call the Red Crescent at 997. Contact Najm for damage-only accidents. "
+        "Moving vehicles after an accident only when allowed. Accident scene reporting and legal responsibility."
+    ),
+    "roundabout": (
+        "Roundabout road junction rules. Give way to vehicles already inside the roundabout. "
+        "Choose the correct lane or track before entering. Use turn signals before exiting. "
+        "Roundabout priority right-of-way and approaching the roundabout."
+    ),
+    "parking": (
+        "Parking stopping and waiting rules. Where parking is prohibited. When stopping is allowed instead of parking. "
+        "Illegal parking violations and penalties."
+    ),
+    "vehicle_color": (
+        "Vehicle altered by changing its color without prior permission from the competent authority. "
+        "Changing the shape or color of a vehicle by repair shop owners and workers without prior valid permission. "
+        "Consequences fine closure repair shop Article 25 Article 64."
+    ),
+    "driving_license": (
+        "Driving license requirements and categories. Private driving license public driving license motorcycle driving license and temporary driving license. "
+        "Minimum age to obtain each type of driving license. License validity renewal issuing conditions training hours driving school and driving test."
+    ),
+    "phone_use": (
+        "Using mobile phones while driving. Using mobile phones without a hands-free device. "
+        "Driver distraction while driving. Traffic violations points system. "
+        "Driver obligations and safe driving behavior."
+    ),
+    "unlicensed_driver": (
+        "Article 77 allowing any person not holding a driving license to drive the vehicle. "
+        "Vehicle owner designated driver possessor allows unlicensed person to drive. "
+        "Fine not less than 1,000 riyals and not more than 2,000 riyals. "
+        "Traffic accident both persons jointly liable subject to competent court."
+    ),
+    "speed": (
+        "Speed limits and safe driving speed. Adjusting speed to surrounding road and weather conditions. "
+        "Stopping distance braking distance reaction distance and speeding penalties."
+    ),
+    "road_signs": (
+        "Traffic signs road signs and traffic signals. Warning signs regulatory signs guide signs and driver obligations."
+    ),
+    "lane": (
+        "Lane changing turning reversing and overtaking rules. Mirror checks signaling lane discipline and merge priority."
+    ),
+    "pedestrian": (
+        "Pedestrian crossing and crosswalk rules. Giving way to pedestrians and driver duties near pedestrian areas. "
+        "When approaching pedestrian zones drivers must check both sides of the road for pedestrians, slow down, and be prepared to stop. "
+        "Drivers must not obstruct pedestrians who have started crossing and must stop in front of a pedestrian crossing when pedestrians want to cross."
+    ),
+}
+
+
+INTENT_RETRIEVAL_HINTS = {
+    "definition": "Focus on the main rule or definition for this topic.",
+    "permission_rule": "Focus on whether it is allowed or prohibited, and who the rule applies to.",
+    "penalty_consequence": "Focus on the violation, fine, penalty points, legal consequence, and responsible party.",
+    "procedure": "Focus on practical step-by-step instructions and what the driver should do.",
+    "comparison": "Focus on the directly comparable rules or procedures for this topic.",
+    "clarification": "Focus on the broad governing rule and the safest directly supported explanation.",
+    "followup": "Focus on the most relevant continuation of the same topic.",
+    "general_road_safety": "Focus on the most directly relevant rule or guidance for this topic.",
+}
+
+
+def expand_retrieval_query(
+    question: str,
+    answer_intent: str = "general_road_safety",
+) -> str:
     normalized = question.lower()
+    driving_license_requirement_terms = (
+        re.search(r"\blicen[sc]e\b", normalized)
+        and re.search(
+            r"\b(obtain|get|issue|issuing|renew|renewal|valid|validity|minimum age|at least|years|private|public|motorcycle|temporary|requirements?)\b",
+            normalized,
+        )
+    )
+    arabic_driving_license_requirement_terms = (
+        re.search(r"رخصة|رخصه", question)
+        and re.search(
+            r"الحصول|استخراج|إصدار|اصدار|تجديد|صلاحية|مدة|الحد الأدنى|الادنى|عمر|سن|خاصة|عمومية|مؤقتة|شروط",
+            question,
+        )
+    )
+
+    if driving_license_requirement_terms or arabic_driving_license_requirement_terms:
+        return (
+            f"{question}\n"
+            "Driving license requirements and categories. Private driving license public driving license motorcycle driving license and temporary driving license. "
+            "Minimum age to obtain each type of driving license. Reaching the age of eighteen years for private and motorcycle driving licenses. "
+            "Reaching the age of twenty years for public and construction vehicle driving licenses. Temporary driving license may be issued from age seventeen under specified controls. "
+            "Training hours driving school and passing the driving test."
+        )
+
     vehicle_color_terms = (
         re.search(r"\b(car|vehicle|automobile)\b", normalized)
         and re.search(r"\b(modif|alter|change|paint|colo(u)?r|shape)\b", normalized)
     )
     arabic_vehicle_color_terms = (
-        re.search(r"سيار|مركب", question)
-        and re.search(r"لون|طلاء|صبغ|شكل|تعديل|تغيير", question)
+        (
+            re.search(r"سيار|مركب", question)
+            and re.search(r"لون|طلاء|صبغ", question)
+        )
+        or re.search(r"(?:سيار|مركب).*(?:تعديل|تغيير|شكل)", question)
+        or re.search(r"(?:تعديل|تغيير|شكل).*(?:سيار|مركب)", question)
     )
 
     if vehicle_color_terms or arabic_vehicle_color_terms:
@@ -1228,8 +1362,12 @@ def expand_retrieval_query(question: str) -> str:
         )
     )
     arabic_unlicensed_driver_terms = (
-        re.search(r"رخصة|مرخص", question)
-        and re.search(r"قيادة|يقود|يسوق|شخص|صديق|سيار|مركب", question)
+        re.search(r"بدون رخصة|بدون رخصه|غير مرخص|لا يحمل رخصة|لا يحمل رخصه|ليس لديه رخصة|ليس لديه رخصه", question)
+        or (
+            re.search(r"رخصة|رخصه|مرخص", question)
+            and re.search(r"السماح|يسمح|اسمح|دع|يدع|سمحت|شخص|صديق", question)
+            and re.search(r"قيادة|يقود|يسوق|سيار|مركب", question)
+        )
     )
 
     if unlicensed_driver_terms or arabic_unlicensed_driver_terms:
@@ -1258,6 +1396,39 @@ def expand_retrieval_query(question: str) -> str:
             "Driver obligations and safe driving behavior."
         )
 
+    pedestrian_improper_crossing_terms = (
+        re.search(r"\bpedestrian\b", normalized)
+        and (
+            re.search(r"\bnot using\b", normalized)
+            or re.search(r"\bnot using a crossing\b", normalized)
+            or re.search(r"\bnot using (?:a )?crosswalk\b", normalized)
+            or re.search(r"\boutside\b.*\bcross", normalized)
+            or re.search(r"\bwithout\b.*\bcross", normalized)
+        )
+    ) or (
+        re.search(r"مشا|ممر", question)
+        and re.search(r"بدون|خارج|ليس|غير", question)
+        and re.search(r"عبور|مخصص", question)
+    )
+
+    if pedestrian_improper_crossing_terms:
+        return (
+            f"{question}\n"
+            "Pedestrians crossing roads other than the places designated for them. "
+            "Pedestrians may only use designated areas as specified by the Regulations. "
+            "Driver duties near pedestrians include slowing down, being prepared to stop, and not endangering pedestrians while they are crossing."
+        )
+
+    language = "ar" if ARABIC_RE.search(question) else "en"
+    topic = _primary_topic_for_question(question, language)
+    topic_hint = TOPIC_RETRIEVAL_HINTS.get(topic or "")
+    intent_hint = INTENT_RETRIEVAL_HINTS.get(answer_intent, "")
+    if topic_hint:
+        hint_parts = [topic_hint]
+        if intent_hint:
+            hint_parts.append(intent_hint)
+        return f"{question}\n{' '.join(hint_parts)}"
+
     return question
 
 
@@ -1268,12 +1439,13 @@ def build_retrieval_query(
     answer_intent: str = "general_road_safety",
 ) -> str:
     explicit_question = rewrite_vague_question(question, chat_history, answer_intent)
-    expanded_question = expand_retrieval_query(explicit_question)
+    expanded_question = expand_retrieval_query(explicit_question, answer_intent)
     if not chat_history:
         return expanded_question
     if is_followup:
         rewritten = expand_retrieval_query(
-            rewrite_followup_question(explicit_question, chat_history)
+            rewrite_followup_question(explicit_question, chat_history),
+            answer_intent,
         )
         return f"{rewritten}\nRelevant prior context:\n{format_chat_history(chat_history[-4:])}"
     return f"{format_chat_history(chat_history[-4:])}\nCurrent question: {expanded_question}"
@@ -1567,8 +1739,12 @@ def filter_focused_docs(
         re.search(r"\b(car|vehicle|automobile)\b", normalized_query)
         and re.search(r"\b(modif|alter|change|paint|colo(u)?r|shape)\b", normalized_query)
     ) or (
-        re.search(r"سيار|مركب", retrieval_query)
-        and re.search(r"لون|طلاء|صبغ|شكل|تعديل|تغيير", retrieval_query)
+        (
+            re.search(r"سيار|مركب", retrieval_query)
+            and re.search(r"لون|طلاء|صبغ", retrieval_query)
+        )
+        or re.search(r"(?:سيار|مركب).*(?:تعديل|تغيير|شكل)", retrieval_query)
+        or re.search(r"(?:تعديل|تغيير|شكل).*(?:سيار|مركب)", retrieval_query)
     )
 
     if not is_vehicle_color_query:
@@ -1612,7 +1788,89 @@ def filter_focused_docs(
         ) or re.search(r"بدون يد|بدون استخدام اليد|تشتيت|انشغال", retrieval_query)
 
         if not is_phone_use_query:
-            return docs_with_scores
+            is_pedestrian_query = (
+                re.search(r"\bpedestrian\b", normalized_query)
+                or re.search(r"\bcrosswalk\b|\bcrossing\b", normalized_query)
+                or (
+                    re.search(r"مشا|ممر", retrieval_query)
+                    and re.search(r"عبور|يعبر|يعبرون|طريق", retrieval_query)
+                )
+            )
+
+            if not is_pedestrian_query:
+                return docs_with_scores
+
+            is_improper_crossing_query = (
+                re.search(r"\bnot using\b", normalized_query)
+                or re.search(r"\bnot using a crossing\b", normalized_query)
+                or re.search(r"\bnot using (?:a )?crosswalk\b", normalized_query)
+                or re.search(r"\boutside\b.*\bcross", normalized_query)
+                or re.search(r"\bwithout\b.*\bcross", normalized_query)
+                or (
+                    re.search(r"بدون|خارج|ليس|غير", retrieval_query)
+                    and re.search(r"عبور|مخصص", retrieval_query)
+                )
+            )
+            is_pedestrian_danger_query = (
+                re.search(r"\bdanger\b|\bdangerous\b|\brisk\b|\brisky\b|\bsafety\b|\bhigh[- ]risk\b", normalized_query)
+                or re.search(r"خطر|خطير|مخاطر|سلامة|غير آمن", retrieval_query)
+            )
+
+            focused = []
+            for doc, score in docs_with_scores:
+                text = _doc_combined_text(doc)
+                has_pedestrian = "pedestrian" in text or "crosswalk" in text or "crossing" in text
+                if is_pedestrian_danger_query:
+                    has_danger_context = any(
+                        term in text
+                        for term in [
+                            "high-risk",
+                            "danger",
+                            "endanger",
+                            "pedestrians move at a speed",
+                            "vehicles are moving at speeds much higher",
+                            "difference in speed may create high-risk situations",
+                            "slow down",
+                            "prepared to stop",
+                        ]
+                    )
+                    has_designated_area_rule = any(
+                        term in text
+                        for term in [
+                            "designated areas",
+                            "other than the places designated",
+                            "pedestrians may only use designated areas",
+                        ]
+                    )
+                    if has_pedestrian and (has_danger_context or has_designated_area_rule):
+                        focused.append((doc, score))
+                    continue
+                if is_improper_crossing_query:
+                    has_designated_area_rule = any(
+                        term in text
+                        for term in [
+                            "designated areas",
+                            "other than the places designated",
+                            "pedestrians may only use designated areas",
+                        ]
+                    )
+                    if has_pedestrian and has_designated_area_rule:
+                        focused.append((doc, score))
+                    continue
+                has_driver_action = any(
+                    term in text
+                    for term in [
+                        "slow down",
+                        "prepared to stop",
+                        "stop in front of a pedestrian crossing",
+                        "do not obstruct pedestrians",
+                        "give way to pedestrians",
+                    ]
+                )
+                if has_pedestrian and has_driver_action:
+                    focused.append((doc, score))
+
+            return focused or docs_with_scores
 
         focused = []
         for doc, score in docs_with_scores:

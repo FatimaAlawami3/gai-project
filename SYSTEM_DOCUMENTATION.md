@@ -488,8 +488,12 @@ Topic examples include:
 - roundabout
 - parking
 - accident
+- driving license
 - phone use
 - unlicensed driver
+- speed / safe distance
+- traffic signals / road signs
+- pedestrian crossing
 - vehicle modification / color
 
 Aspect examples include:
@@ -542,7 +546,7 @@ The system now checks whether a question should be clarified before RAG. This is
 Cases that can trigger clarification include:
 
 - broad procedural questions with no topic
-- vague permission/rule questions with no clear action or role
+- vague permission/rule questions with no clear action or role, unless the wording already matches a direct rule path such as vehicle modification or allowing another person to drive the car
 - ambiguous penalty follow-ups
 - vague anaphoric follow-ups with no recoverable topic
 
@@ -559,10 +563,14 @@ This replaced earlier fallback behavior that said there was not enough informati
 
 The system expands some high-value query types before retrieval.
 
-Implemented special expansions include:
+Implemented special expansions and topic-aware retrieval hints include:
 
 - vehicle modification / repainting / color change
 - allowing an unlicensed person to drive
+- driving-license requirements, minimum age, validity, and renewal questions
+- speed and safe-driving-distance questions
+- traffic-signal and road-sign questions
+- pedestrian-crossing safety questions
 
 These expansions inject critical legal phrases and related consequences into the search query to improve retrieval of the correct article or rule.
 
@@ -880,7 +888,11 @@ Fixes implemented:
 - improved vague follow-up rewriting using the last user topic
 - added a dedicated `phone_use` road topic for English and Arabic phone/mobile-driving questions
 - added phone-use retrieval expansion and focused document filtering so valid phone-use questions no longer fall back when the supporting chunks already exist in the knowledge base
+- added direct retrieval support for driving-license requirement questions in English and Arabic
+- widened signal and speed coverage to include traffic-light wording plus braking/reaction-distance vocabulary
+- added pedestrian improper-crossing handling and danger/safety follow-up support
 - broadened the vehicle-modification topic so questions like `Is modifying a car allowed?` are handled as direct legal-rule questions instead of unnecessary clarification cases
+- tightened Arabic vehicle-modification matching so phrases like `تعديل السرعة` are treated as speed questions rather than color/modification questions
 - localized answer section labels so Arabic answers use Arabic headings such as `النقاط الرئيسية:` instead of English labels
 
 These changes broadened Arabic follow-up coverage, but they do not imply exhaustive understanding of every possible informal Arabic phrasing.
@@ -1021,6 +1033,8 @@ Observed outcome:
 - both preserved the improved follow-up behavior for English and Arabic multi-turn cases
 - `gemini-embedding-001` produced more complete accident-related and Arabic answers
 - `text-multilingual-embedding-002` remained competitive on roundabout and unlicensed-driver questions, but several answers were shorter and less detailed
+
+These comparison results refer to the scored experiment snapshot. Later routing and retrieval fixes broadened the live system further in areas such as driving-license questions, traffic signals, speed/safe-distance wording, pedestrian-crossing follow-ups, and some Arabic disambiguation cases.
 
 This led to the final selection of `gemini-embedding-001` as the preferred production embedding model, with `text-multilingual-embedding-002` retained as the experimental baseline.
 

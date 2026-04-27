@@ -28,6 +28,8 @@ The corresponding vector stores were stored independently as:
 - `data/vector_store_gemini_embedding_001`
 - `data/vector_store_text_multilingual_embedding_002`
 
+This report records the scored comparison snapshot for that controlled run. Later backend fixes such as driving-license requirement handling, traffic-signal/red-light routing, braking/reaction-distance coverage, pedestrian-crossing follow-up support, and Arabic disambiguation fixes were implemented after this comparison and are not retroactively reflected in the scores below.
+
 This separation ensured that the baseline comparison did not overwrite or distort the original Gemini-based configuration already used in the main project.
 
 For the multilingual baseline, a new FAISS index was built by re-embedding all `619` chunks from the shared knowledge base using `text-multilingual-embedding-002`. The Gemini comparison branch reused the existing Gemini-indexed corpus, copied into its own isolated vector-store directory for fair experimental management.
@@ -142,6 +144,8 @@ From the observed evaluation set, `gemini-embedding-001` emerged as the stronger
 - stronger Arabic detail retention
 - broader evidence coverage on safety-critical procedural questions
 - more reliable clarification behavior on the underspecified Arabic penalty test
+
+This interpretation should therefore be read as the conclusion of the recorded comparison snapshot, not as a claim that every later live-system behavior has already been rescored.
 
 At the same time, `text-multilingual-embedding-002` was a reasonable baseline because:
 

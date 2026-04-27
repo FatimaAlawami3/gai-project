@@ -480,8 +480,12 @@ Implemented follow-up topics include:
 - roundabout
 - parking
 - accident
+- driving license
 - phone use
 - unlicensed driver
+- speed / safe distance
+- traffic signals / road signs
+- pedestrian crossing
 - vehicle modification / color
 
 Implemented aspects include:
@@ -512,7 +516,7 @@ Additionally, vague follow-ups such as:
 
 are transformed using the last relevant user topic.
 
-For direct legal-rule questions, the retrieval layer also applies topic-aware query expansion in selected domains. During development, this was extended to a dedicated phone-use topic after an English phone-while-driving question briefly produced a fallback despite the presence of the relevant handbook evidence in the indexed corpus.
+For direct legal-rule questions, the retrieval layer also applies topic-aware query expansion in selected domains. During development, this was first extended to a dedicated phone-use topic after an English phone-while-driving question briefly produced a fallback despite the presence of the relevant handbook evidence in the indexed corpus, and it was later broadened to cover driving-license requirement questions, speed/safe-distance wording, traffic-signal phrasing, pedestrian-crossing safety questions, and stricter Arabic disambiguation around vehicle-modification terms.
 
 #### 6. Improvements Made During Development
 
@@ -525,7 +529,11 @@ Follow-up handling required substantial refinement. The major improvements we ma
 - prioritizing recent **user** topics instead of assistant messages during topic extraction;
 - fixing cases where follow-ups were incorrectly pulled toward the wrong previous topic;
 - introducing a dedicated `phone_use` topic plus retrieval expansion and focused filtering for English and Arabic mobile-phone-driving questions so grounded evidence is surfaced more reliably;
+- adding direct retrieval support for English and Arabic driving-license requirement questions;
+- widening signal and speed coverage to include traffic-light wording plus braking/reaction-distance vocabulary;
+- adding pedestrian improper-crossing handling together with danger/safety follow-up support;
 - broadening the vehicle-modification topic so `Is modifying a car allowed?` is treated as a direct legal-rule query rather than an underspecified clarification case;
+- tightening Arabic vehicle-modification matching so expressions like `تعديل السرعة` are interpreted as speed questions rather than color/modification questions;
 - localizing answer section headings so Arabic responses use Arabic labels rather than English section titles.
 
 These improvements materially increased multi-turn coherence and reduced misrouting.
@@ -856,6 +864,8 @@ The use of vector retrieval plus multi-stage filtering improved answer precision
 
 After the comparison extension, both embedding configurations were shown to be operational on the same evaluation set. Neither embedding profile collapsed into fallback behavior on the tested prompt set, and both preserved the improved follow-up behavior previously added to the system.
 
+Those comparison results should be read as a scored experiment snapshot. Additional routing and retrieval fixes were applied later for live-system coverage in areas such as driving-license questions, traffic signals, speed/safe-distance wording, pedestrian-crossing follow-ups, and Arabic disambiguation.
+
 ### 2. Accuracy and Reliability
 
 Reliability in DALIL comes primarily from architecture rather than from model fine-tuning. The system reduces error by:
@@ -914,6 +924,8 @@ From the direct embedding comparison, the following pattern emerged:
 - `gemini-embedding-001` returned broader accident-procedure answers and stronger Arabic detail retention
 - `text-multilingual-embedding-002` remained correct on roundabout and unlicensed-driver scenarios, but several answers were shorter and less complete
 - both models preserved follow-up continuity, suggesting that the routing and query-rewriting layers contributed strongly to multi-turn robustness independent of embedding choice
+
+This ranking reflects the recorded comparison run rather than every later production fix applied after that run.
 
 ## V. Discussion
 

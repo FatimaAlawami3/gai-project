@@ -538,19 +538,31 @@ h2 {
 
 .suggestions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 2px 6px;
+  scrollbar-width: thin;
+  min-height: 42px;
 }
 
 .suggestions button {
+  flex: 0 0 auto;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.92);
   color: var(--forest);
-  padding: 10px 14px;
-  font-weight: 800;
+  padding: 7px 11px;
+  font-size: 0.84rem;
+  line-height: 1.2;
+  font-weight: 700;
   box-shadow: 0 8px 24px rgba(24, 55, 44, 0.07);
-  max-width: 100%;
+  max-width: min(310px, 60vw);
+  min-height: 34px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .suggestions button:hover {
@@ -714,5 +726,18 @@ h2 {
     width: 48px;
     height: 48px;
     border-radius: 16px;
+  }
+
+  .suggestions {
+    gap: 5px;
+    min-height: 38px;
+    padding-bottom: 4px;
+  }
+
+  .suggestions button {
+    max-width: 72vw;
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
   }
 }

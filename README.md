@@ -232,17 +232,3 @@ Invoke-RestMethod `
 }
 ```
 
-## Evaluation artifacts
-
-The embedding-comparison material is stored in:
-
-- [comparison_versions/embedding_comparison_question_sheet.md](/C:/Users/fatom/OneDrive/Desktop/GAI_Pdf's/comparison_versions/embedding_comparison_question_sheet.md)
-- [comparison_versions/embedding_comparison_report_sections.md](/C:/Users/fatom/OneDrive/Desktop/GAI_Pdf's/comparison_versions/embedding_comparison_report_sections.md)
-- [comparison_versions/results/Gemini_Test_Results.txt](/C:/Users/fatom/OneDrive/Desktop/GAI_Pdf's/comparison_versions/results/Gemini_Test_Results.txt)
-- [comparison_versions/results/Multilingual_Test_Results.txt](/C:/Users/fatom/OneDrive/Desktop/GAI_Pdf's/comparison_versions/results/Multilingual_Test_Results.txt)
-
-## Notes
-
-- Suggested questions are fixed and language-matched to the current UI mode.
-- Arabic answers use Arabic section labels.
-- The comparison workflow is designed so the main Gemini setup remains intact.

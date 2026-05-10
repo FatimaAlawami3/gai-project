@@ -1,8 +1,23 @@
+# Environment files and local secrets
 .env
+*.env
+!.env.example
+backend/.env
+backend/*.env
+comparison_versions/*/settings.env
+
+# Google Cloud / service-account credentials
+data/credentials/
+credentials/
+*credentials*.json
+gen-lang-client-*.json
+
+# Local runtime files
 logs/
 __pycache__/
 *.pyc
-gen-lang-client-*.json
+
+# Frontend dependencies and builds
 node_modules/
 dist/
 frontend/node_modules/
